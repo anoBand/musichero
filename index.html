@@ -192,7 +192,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   display: grid; align-content: space-between; gap: 6px;
   min-height: 3.6rem; padding: 8px 6px 8px 9px;
   background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--bar);
-  border-radius: 7px; transition: background 0.08s, color 0.08s;
+  border-radius: 7px; transition: background 0.08s, color 0.08s; cursor: pointer;
 }
 .bar.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); border-left-color: var(--bar); }
 .sym { font: 700 1.5rem/1 var(--font-display); letter-spacing: -0.02em; white-space: nowrap; }
@@ -247,8 +247,30 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 
 /* practice */
 .p-controls { display: grid; gap: 10px; }
-.p-row { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 8px; }
-.p-row select { min-height: 42px; font-size: 0.9rem; padding: 0 8px; }
+.keygrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.keygrid .chip { padding: 0; min-height: 40px; font: 600 0.95rem/1 var(--font-body); }
+.keygrid .chip[data-k="random"] { grid-column: 1 / -1; font: 500 0.85rem/1 var(--font-body); }
+.picker, .prow {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 12px;
+  width: 100%; min-height: 54px; padding: 8px 14px; text-align: left; cursor: pointer;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-left: 3px solid var(--bar); border-radius: 8px;
+  font: inherit;
+}
+.picker .r, .prow .r { font: 700 1.1rem/1.3 var(--font-display); }
+.picker .n, .prow .n { grid-column: 1; font-size: 0.8rem; color: var(--muted); }
+.picker .c, .prow .c { grid-column: 2; grid-row: 1 / span 2; font: 500 0.78rem/1.3 var(--font-data); color: var(--muted); text-align: right; }
+.prow { min-height: 60px; }
+.prow:active, .picker:active { background: var(--accent-soft); }
+.prow[aria-current="true"] { background: var(--accent-soft); border-color: var(--accent); border-left-color: var(--accent); }
+.sheet {
+  position: fixed; inset: 0; z-index: 20; overflow-y: auto; background: var(--bg);
+  padding-top: calc(12px + env(safe-area-inset-top, 0px)); padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.sheet-in { max-width: 36rem; margin: 0 auto; display: grid; gap: 12px; }
+.sheet-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding-block: 6px; background: var(--bg); }
+.plist { display: grid; gap: 8px; }
+.plist h2 { margin-top: 10px; }
 .p-tempo { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; }
 .p-tempo output { font: 500 0.85rem/1 var(--font-data); font-variant-numeric: tabular-nums; min-width: 4.6rem; }
 .p-timer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -295,7 +317,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
       <h2>연습</h2>
       <div class="modes">
         <button class="mode" type="button" id="m-prog"><span class="t">코드 진행 퀴즈</span><span class="d">배킹을 듣고 어떤 진행인지 맞히기</span><span class="go" aria-hidden="true">›</span></button>
-        <button class="mode" type="button" id="m-key"><span class="t">키 맞추기</span><span class="d">기준음 도를 듣고 배킹의 키 맞히기</span><span class="go" aria-hidden="true">›</span></button>
+        <button class="mode" type="button" id="m-key"><span class="t">키 맞추기</span><span class="d">배킹을 듣고 어떤 키인지 맞히기</span><span class="go" aria-hidden="true">›</span></button>
         <button class="mode" type="button" id="m-practice"><span class="t">솔로 연습</span><span class="d">진행, 키, 템포를 골라 배킹과 타이머 켜기</span><span class="go" aria-hidden="true">›</span></button>
         <button class="mode" type="button" id="m-review"><span class="t">복습</span><span class="d" id="review-desc"></span><span class="go" aria-hidden="true">›</span></button>
       </div>
@@ -333,16 +355,16 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
       <div class="field">
         <span class="lbl">출제 범위</span>
         <div class="chips" id="modes">
-          <button class="chip" type="button" data-m="major" aria-pressed="true">장조</button>
-          <button class="chip" type="button" data-m="minor" aria-pressed="false">단조</button>
+          <button class="chip" type="button" data-m="major" aria-pressed="true">메이저</button>
+          <button class="chip" type="button" data-m="minor" aria-pressed="false">마이너</button>
           <button class="chip" type="button" data-m="mixed" aria-pressed="false">섞기</button>
         </div>
       </div>
 
       <div class="field" id="key-field">
-        <label class="lbl" for="keysel">키</label>
-        <select id="keysel"></select>
-        <p class="note">키를 고르면 으뜸음(C면 도)이 짧게 울려요. 단조 문제는 같은 이름의 단조 키로 나와요. 고르지 않으면 키가 문제마다 바뀝니다.</p>
+        <span class="lbl">키</span>
+        <div class="keygrid" id="keygrid"></div>
+        <p class="note">키를 고르면 으뜸음(C면 도)이 짧게 울려요. 마이너 문제는 같은 이름의 마이너 키로 나와요. 랜덤이면 키가 문제마다 바뀝니다.</p>
       </div>
 
       <div class="field">
@@ -386,7 +408,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 
     <div class="chart masked" id="chart" aria-label="코드 진행"></div>
     <div class="opts" id="opts" aria-label="보기"></div>
-    <p class="hint" id="switch-hint" hidden>다른 보기를 누르면 바로 그 보기로 바꿔 들을 수 있어요.</p>
+    <p class="hint" id="switch-hint" hidden>다른 보기를 누르면 바로 바꿔 들을 수 있고, 코드 칸을 누르면 그 마디부터 재생돼요.</p>
     <p class="status" id="status" role="status" aria-live="polite"></p>
 
     <div class="actions">
@@ -408,10 +430,12 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
     </div>
 
     <div class="p-controls">
-      <div class="p-row">
-        <select id="p-prog" aria-label="코드 진행"></select>
-        <select id="p-key" aria-label="키"></select>
-      </div>
+      <button class="picker" type="button" id="p-prog-btn" aria-haspopup="dialog">
+        <span class="r" id="p-prog-roman"></span>
+        <span class="n" id="p-prog-name"></span>
+        <span class="c">변경</span>
+      </button>
+      <div class="keygrid" id="p-keygrid" aria-label="키"></div>
       <div class="p-tempo">
         <output id="p-bpm-out" for="p-bpm">100 BPM</output>
         <input id="p-bpm" type="range" min="50" max="180" step="1" value="100" aria-label="템포">
@@ -439,6 +463,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
       <span class="lbl-play">재생</span>
     </button>
   </section>
+
+  <!-- progression picker for solo practice -->
+  <div class="sheet" id="sheet" role="dialog" aria-label="코드 진행 고르기" hidden>
+    <div class="sheet-in">
+      <div class="sheet-head"><h2>코드 진행 고르기</h2><button class="ghost" type="button" id="sheet-close">닫기</button></div>
+      <div class="plist" id="sheet-list"></div>
+    </div>
+  </div>
 </main>
 
 <script src="vendor/tone-14.8.49.js"></script>
@@ -487,43 +519,31 @@ const POOL = [
   /* minor, starting on i */
   { id: 'andalus',  mode: 'minor', roman: 'i–♭VII–♭VI–V',     name: '안달루시안 진행',         steps: [[0, 'm'], [10, ''], [8, ''], [7, '']] },
   { id: 'min-145',  mode: 'minor', roman: 'i–iv–V–i',         name: '마이너 기본 진행',        steps: [[0, 'm'], [5, 'm'], [7, ''], [0, 'm']] },
-  { id: 'min-6375', mode: 'minor', roman: 'i–♭VI–♭III–♭VII',  name: '팝 진행의 단조판',        steps: [[0, 'm'], [8, ''], [3, ''], [10, '']] },
+  { id: 'min-6375', mode: 'minor', roman: 'i–♭VI–♭III–♭VII',  name: '팝 진행의 마이너판',        steps: [[0, 'm'], [8, ''], [3, ''], [10, '']] },
   { id: 'min-67',   mode: 'minor', roman: 'i–♭VI–♭VII–i',     name: '',                        steps: [[0, 'm'], [8, ''], [10, ''], [0, 'm']] },
   { id: 'min-3',    mode: 'minor', roman: 'i–♭III–♭VII–♭VI',  name: '',                        steps: [[0, 'm'], [3, ''], [10, ''], [8, '']] },
   /* minor, starting elsewhere */
   { id: 'epic',     mode: 'minor', roman: '♭VI–♭VII–i–i',     name: '에픽 진행',               steps: [[8, ''], [10, ''], [0, 'm'], [0, 'm']] },
-  { id: 'min-circ', mode: 'minor', roman: 'iv–♭VII–♭III–♭VI', name: '단조 5도권 진행',         steps: [[5, 'm'], [10, ''], [3, ''], [8, '']] },
+  { id: 'min-circ', mode: 'minor', roman: 'iv–♭VII–♭III–♭VI', name: '마이너 5도권 진행',         steps: [[5, 'm'], [10, ''], [3, ''], [8, '']] },
   { id: 'min-6371', mode: 'minor', roman: '♭VI–♭III–♭VII–i',  name: '',                        steps: [[8, ''], [3, ''], [10, ''], [0, 'm']] },
   { id: 'min-iv',   mode: 'minor', roman: 'iv–i–♭VII–♭VI',    name: '',                        steps: [[5, 'm'], [0, 'm'], [10, ''], [8, '']] }
 ];
 function startsOnTonic(p) { return p.steps[0][0] === 0; }
-/* All 12 tonics per mode; flat=true spells chords with flats. */
-const KEYS = {
-  major: [
-    { name: 'C', pc: 0, flat: false }, { name: 'Db', pc: 1, flat: true }, { name: 'D', pc: 2, flat: false },
-    { name: 'Eb', pc: 3, flat: true }, { name: 'E', pc: 4, flat: false }, { name: 'F', pc: 5, flat: true },
-    { name: 'F#', pc: 6, flat: false }, { name: 'G', pc: 7, flat: false }, { name: 'Ab', pc: 8, flat: true },
-    { name: 'A', pc: 9, flat: false }, { name: 'Bb', pc: 10, flat: true }, { name: 'B', pc: 11, flat: false }
-  ],
-  minor: [
-    { name: 'C', pc: 0, flat: true }, { name: 'C#', pc: 1, flat: false }, { name: 'D', pc: 2, flat: true },
-    { name: 'Eb', pc: 3, flat: true }, { name: 'E', pc: 4, flat: false }, { name: 'F', pc: 5, flat: true },
-    { name: 'F#', pc: 6, flat: false }, { name: 'G', pc: 7, flat: true }, { name: 'G#', pc: 8, flat: false },
-    { name: 'A', pc: 9, flat: false }, { name: 'Bb', pc: 10, flat: true }, { name: 'B', pc: 11, flat: false }
-  ]
-};
-const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+/* Every key and chord is spelled with flats. */
 const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+const KEY_LIST = FLAT_NAMES.map((name, pc) => ({ name: name, pc: pc }));
+const KEYS = { major: KEY_LIST, minor: KEY_LIST };
+/* accepts older sharp spellings saved on the device ('F#' -> G flat) */
+function keyByName(name) { return KEY_LIST[(NOTE_PC[name.charAt(0)] + accOf(name.charAt(1)) + 12) % 12]; }
 const SOLFEGE = { C: '도', D: '레', E: '미', F: '파', G: '솔', A: '라', B: '시' };
 const BPM_MIN = 70, BPM_MAX = 130;
 
 function keyLabel(k) { return k.name.charAt(0) + (k.name.length > 1 ? accGlyph(k.name.charAt(1)) : ''); }
 function solfege(k) { return SOLFEGE[k.name.charAt(0)] + (k.name.length > 1 ? accGlyph(k.name.charAt(1)) : ''); }
-function modeWord(mode) { return mode === 'major' ? '장조' : '단조'; }
+function modeWord(mode) { return mode === 'major' ? '메이저' : '마이너'; }
 function randomBpm() { return BPM_MIN + Math.floor(Math.random() * (BPM_MAX - BPM_MIN + 1)); }
 function chordsFor(prog, key) {
-  const names = key.flat ? FLAT_NAMES : SHARP_NAMES;
-  return prog.steps.map((s) => parseChord(names[(key.pc + s[0]) % 12] + s[1]));
+  return prog.steps.map((s) => parseChord(FLAT_NAMES[(key.pc + s[0]) % 12] + s[1]));
 }
 function chordText(chs) { return chs.map((c) => c.root + c.quality).join(' '); }
 function shuffle(a) {
@@ -571,7 +591,7 @@ function makeKeyQuestion(setting, last, forcedKey) {
   const mode = pickMode(setting);
   const pool = POOL.filter((p) => p.mode === mode);
   const prog = pickOther(pool, (p) => last && p.id === last.id);
-  let key = forcedKey ? KEYS[mode].find((k) => k.name === forcedKey) : null;
+  let key = forcedKey ? keyByName(forcedKey) : null;
   if (!key) key = pickOther(KEYS[mode], (k) => last && last.key === mode + k.name);
   const near = shuffle([7, 5, 2, 10]).slice(0, 2);
   const far = shuffle([1, 3, 4, 6, 8, 9, 11]).slice(0, 1);
@@ -764,7 +784,7 @@ const Store = {
 Store.load();
 function today() { return dayKey(new Date()); }
 
-try { if (window.Tone && Tone.Context) Tone.setContext(new Tone.Context({ latencyHint: 'playback', lookAhead: 0.25 })); } catch (e) {}
+try { if (window.Tone && Tone.Context) Tone.setContext(new Tone.Context({ latencyHint: 'playback', lookAhead: 0.12 })); } catch (e) {}
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -779,6 +799,7 @@ let eventId = null;
 let wakeLock = null;
 let playToken = 0;
 let lastChordHit = 0, lastBassHit = 0;
+let stepBase = 0;
 const layers = { chord: true, bass: true, drums: true };
 const state = {
   view: 'home', session: { kind: 'prog' }, phase: 'idle',
@@ -994,71 +1015,80 @@ async function ready() {
   return true;
 }
 
-/* one bar of count-in clicks at the new tempo, then the backing loop. In the key quiz the reference C rings over the count-in. */
-async function start() {
+/* A short count-in at the new tempo (2 beats in a quiz, 4 in practice), then the backing loop from the given bar.
+   Fades and clicks are timed on the raw audio clock, so they act at once instead of waiting out the look-ahead. */
+async function start(opts) {
+  opts = opts || {};
   const token = ++playToken;
   if (!(await ready())) return;
   if (token !== playToken) return;
   const t = transport();
   t.bpm.value = bpm;
-  step = 0;
+  stepBase = (opts.bar || 0) * 8;
+  step = stepBase;
   lastChordHit = 0; lastBassHit = 0;
   if (eventId === null) eventId = t.scheduleRepeat(tick, '8n');
-  const lead = 0.1;
+  const beats = opts.countIn === false ? 0 : (inPractice() ? 4 : 2);
   const beatSec = 60 / bpm;
-  const now = Tone.now();
-  const t0 = now + lead;
-  const startAt = t0 + beatSec * 4;
+  const ctxNow = Tone.getContext().currentTime;
+  const t0 = ctxNow + 0.05;
+  const startAt = Math.max(t0 + beatSec * beats, Tone.now() + 0.02);
   playing = true;
   setPlayUi(true);
   lockScreen();
-  /* the backing bus stays muted until bar 1 so the previous question's tails can't bleed in */
-  audio.master.gain.cancelScheduledValues(now);
-  audio.master.gain.setValueAtTime(0, now);
+  /* the backing bus stays muted until the first bar so earlier tails can't bleed in */
+  audio.master.gain.cancelAndHoldAtTime(ctxNow);
+  audio.master.gain.linearRampToValueAtTime(0, ctxNow + 0.03);
   audio.master.gain.setValueAtTime(1, startAt - 0.005);
   renewIntro();
-  audio.clickBus.gain.cancelScheduledValues(now);
-  audio.clickBus.gain.setValueAtTime(1, now);
-  for (let i = 0; i < 4; i++) audio.click.triggerAttackRelease(i === 0 ? 'C6' : 'G5', 0.03, t0 + i * beatSec, i === 0 ? 1 : 0.7);
-  const withRef = !inPractice() && state.q && state.q.type === 'key';
-  if (withRef) audio.ref.triggerAttackRelease('C4', beatSec * 3.2, t0, 0.85);
-  playbackStatus(withRef ? '기준음 도(C) · 한 마디 뒤 배킹 시작' : '카운트인 · 한 마디 뒤 시작');
+  audio.clickBus.gain.cancelScheduledValues(ctxNow);
+  audio.clickBus.gain.setValueAtTime(1, ctxNow);
+  for (let i = 0; i < beats; i++) audio.click.triggerAttackRelease(i === 0 ? 'C6' : 'G5', 0.03, t0 + i * beatSec, i === 0 ? 1 : 0.7);
+  if (beats) playbackStatus('곧 시작해요');
   t.start(startAt);
   drawer().schedule(() => { if (playing && token === playToken) playbackStatus(inPractice() ? '재생 중' : '재생 중 · 4마디 반복'); }, startAt);
 }
-function stop(msg) {
+function stop(msg, quiet) {
   playToken++;
   const was = playing;
   playing = false;
   if (window.Tone) {
     transport().stop();
     if (audio) {
-      const now = Tone.now();
+      const ctxNow = Tone.getContext().currentTime;
       [audio.master, audio.clickBus].forEach((g) => {
-        g.gain.cancelAndHoldAtTime(now);
-        g.gain.linearRampToValueAtTime(0, now + 0.06);
+        g.gain.cancelAndHoldAtTime(ctxNow);
+        g.gain.linearRampToValueAtTime(0, ctxNow + 0.04);
       });
       audio.chord.releaseAll();
-      audio.bass.triggerRelease(now);
+      audio.bass.triggerRelease(Tone.now());
     }
   }
   step = 0;
+  stepBase = 0;
   try { drawer().cancel(0); } catch (e) {}
   setActive(-1, -1);
   setPlayUi(false);
-  playbackStatus(msg || '정지됨');
+  if (!quiet) playbackStatus(msg || '정지됨');
   unlockScreen();
   if (was && inPractice()) flushPractice();
+}
+/* 3. tap a chord block: playback restarts from that bar, without a count-in */
+function jumpTo(bar) {
+  if (!chords.length || bar < 0 || bar >= chords.length) return;
+  if (!inPractice() && state.phase === 'idle') return;
+  if (playing) stop(null, true);
+  start({ bar: bar, countIn: false });
 }
 /* a single piano key: struck, falling, then damped — about half a second in all */
 async function previewTonic(pc) {
   if (!(await ready())) return;
   if (playing) return;
-  const now = Tone.now();
+  const ctxNow = Tone.getContext().currentTime;
   renewIntro();
-  audio.clickBus.gain.cancelScheduledValues(now);
-  audio.clickBus.gain.setValueAtTime(1, now);
-  audio.ref.triggerAttackRelease(midiName(60 + pc), 0.3, now + 0.02, 0.85);
+  audio.clickBus.gain.cancelScheduledValues(ctxNow);
+  audio.clickBus.gain.setValueAtTime(1, ctxNow);
+  audio.ref.triggerAttackRelease(midiName(60 + pc), 0.3, ctxNow + 0.03, 0.85);
 }
 
 /* layer on/off, kept in sync across screens */
@@ -1080,7 +1110,7 @@ function morph() {
   const ctxNow = Tone.getContext().currentTime;
   if (t.state !== 'started' || t.getTicksAtTime(Tone.now()) <= 0) return;
   const T0 = ctxNow + 0.01;
-  const posAt = (T) => Math.floor(t.getTicksAtTime(T) / (t.PPQ / 2));
+  const posAt = (T) => Math.floor(t.getTicksAtTime(T) / (t.PPQ / 2)) + stepBase;
   const chordAt = (T) => chords[Math.floor(posAt(T) / 8) % chords.length];
   const i0 = posAt(T0);
   setActive(Math.floor(i0 / 8) % chords.length, Math.floor((i0 % 8) / 2));
@@ -1201,6 +1231,7 @@ function renderHome() {
 }
 function showHome() {
   if (playing) stop();
+  closeSheet();
   state.phase = 'idle';
   show('home');
   renderHome();
@@ -1209,7 +1240,7 @@ function openSetup(kind) {
   state.session = { kind: kind };
   $('#setup-title').textContent = kind === 'key' ? '키 맞추기' : '코드 진행 퀴즈';
   $('#setup-lead').textContent = kind === 'key'
-    ? '기준음 도(C)가 먼저 울리고 배킹이 시작돼요. 어떤 키인지 4개 중에서 고르세요.'
+    ? '배킹을 듣고 어떤 키인지 4개 중에서 고르세요.'
     : '배킹을 듣고 어떤 코드 진행인지 4개 보기 중에서 맞춰보세요.';
   $('#key-field').hidden = kind === 'key';
   show('setup');
@@ -1267,6 +1298,7 @@ async function nextQuestion() {
     const due = dueReviews(Store.data, today());
     if (!due.length) { showHome(); return; }
     const it = due[0];
+    s.item = it;
     q = it.t === 'key' ? makeKeyQuestion(it.mode, null, it.id) : makeProgQuestion(it.mode, null, null, it.id);
   } else if (s.kind === 'key') {
     q = makeKeyQuestion(state.setting, state.last);
@@ -1299,7 +1331,7 @@ function answer(i) {
   const ok = q.options[i].id === q.answerId;
   state.asked += 1;
   if (ok) { state.right += 1; state.streak += 1; } else { state.streak = 0; }
-  const doneQuests = recordAnswer(Store.data, today(), { type: q.type, id: q.itemId, mode: q.mode, ok: ok, review: state.session.kind === 'review' });
+  const doneQuests = recordAnswer(Store.data, today(), { type: q.type, id: state.session.kind === 'review' && state.session.item ? state.session.item.id : q.itemId, mode: q.mode, ok: ok, review: state.session.kind === 'review' });
   Store.save();
 
   const btns = $('#opts').children;
@@ -1355,8 +1387,7 @@ function switchTo(i) {
 function practiceProg() { return POOL.find((p) => p.id === practice.progId); }
 function applyPractice(live) {
   const p = practiceProg();
-  const key = KEYS[p.mode].find((k) => k.pc === practice.keyPc);
-  chords = chordsFor(p, key);
+  chords = chordsFor(p, KEY_LIST[practice.keyPc]);
   if (window.Tone) prepareVoicing(chords);
   renderChart();
   if (live && playing) morph();
@@ -1379,7 +1410,7 @@ function openPractice() {
   practice.sec = 0; practice.unsaved = 0;
   bpm = practice.bpm;
   $('#p-loops').textContent = '';
-  setStatus('진행과 키, 템포를 고르고 재생을 누르세요. 재생 중에 바꿔도 바로 이어져요.');
+  setStatus('재생 중에 진행이나 키를 바꿔도 이어지고, 코드 칸을 누르면 그 마디부터 재생돼요.');
   applyPractice(false);
   renderPracticeClock();
 }
@@ -1443,40 +1474,70 @@ $('#bpm').addEventListener('input', (e) => setFixedBpm(Number(e.target.value)));
 $('#bpm-down').addEventListener('click', () => setFixedBpm(fixedBpm - 1));
 $('#bpm-up').addEventListener('click', () => setFixedBpm(fixedBpm + 1));
 
-const KEY_LABELS = ['C (도)', 'C♯/D♭ (도♯/레♭)', 'D (레)', 'D♯/E♭ (레♯/미♭)', 'E (미)', 'F (파)', 'F♯/G♭ (파♯/솔♭)', 'G (솔)', 'G♯/A♭ (솔♯/라♭)', 'A (라)', 'A♯/B♭ (라♯/시♭)', 'B (시)'];
-function addOption(sel, value, text, parent) {
-  const opt = document.createElement('option');
-  opt.value = value;
-  opt.textContent = text;
-  (parent || sel).appendChild(opt);
+/* key pickers: one tap per key, flat spellings */
+function buildKeyGrid(el, withRandom, onPick) {
+  (withRandom ? [['random', '랜덤']] : []).concat(KEY_LIST.map((k) => [String(k.pc), keyLabel(k)])).forEach((it) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.dataset.k = it[0]; b.textContent = it[1];
+    b.setAttribute('aria-pressed', 'false');
+    el.appendChild(b);
+  });
+  el.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-k]');
+    if (!b) return;
+    markKeyGrid(el, b.dataset.k);
+    onPick(b.dataset.k);
+  });
 }
-const keySel = $('#keysel');
-addOption(keySel, 'random', '랜덤');
-KEY_LABELS.forEach((l, i) => addOption(keySel, String(i), l));
-keySel.addEventListener('change', () => {
-  state.keyPc = keySel.value === 'random' ? null : Number(keySel.value);
+function markKeyGrid(el, value) {
+  Array.from(el.children).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === value)));
+}
+buildKeyGrid($('#keygrid'), true, (v) => {
+  state.keyPc = v === 'random' ? null : Number(v);
   if (state.keyPc !== null) previewTonic(state.keyPc);
 });
+markKeyGrid($('#keygrid'), 'random');
+buildKeyGrid($('#p-keygrid'), false, (v) => { practice.keyPc = Number(v); applyPractice(true); });
+markKeyGrid($('#p-keygrid'), String(practice.keyPc));
 
-/* practice controls */
-const pProg = $('#p-prog');
-['major', 'minor'].forEach((mode) => {
-  const g = document.createElement('optgroup');
-  g.label = modeWord(mode);
-  POOL.filter((p) => p.mode === mode).forEach((p) => addOption(pProg, p.id, p.roman + (p.name ? ' · ' + p.name : ''), g));
-  pProg.appendChild(g);
-});
-const pKey = $('#p-key');
-function fillPracticeKeys() {
-  const mode = practiceProg().mode;
-  pKey.textContent = '';
-  KEYS[mode].forEach((k) => addOption(pKey, String(k.pc), keyLabel(k) + ' ' + modeWord(mode)));
-  pKey.value = String(practice.keyPc);
+/* solo practice: progression picker (a full-screen list instead of a dropdown) */
+function renderPracticeHead() {
+  const p = practiceProg();
+  $('#p-prog-roman').textContent = p.roman;
+  $('#p-prog-name').textContent = (p.name ? p.name + ' · ' : '') + modeWord(p.mode);
 }
-pProg.value = practice.progId;
-fillPracticeKeys();
-pProg.addEventListener('change', () => { practice.progId = pProg.value; fillPracticeKeys(); applyPractice(true); });
-pKey.addEventListener('change', () => { practice.keyPc = Number(pKey.value); applyPractice(true); });
+function openSheet() {
+  const list = $('#sheet-list');
+  list.textContent = '';
+  const key = KEY_LIST[practice.keyPc];
+  ['major', 'minor'].forEach((mode) => {
+    const h = document.createElement('h2'); h.textContent = modeWord(mode); list.appendChild(h);
+    POOL.filter((p) => p.mode === mode).forEach((p) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'prow'; b.dataset.id = p.id;
+      if (p.id === practice.progId) b.setAttribute('aria-current', 'true');
+      const r = document.createElement('span'); r.className = 'r'; r.textContent = p.roman;
+      const n = document.createElement('span'); n.className = 'n'; n.textContent = p.name || modeWord(mode) + ' 진행';
+      const c = document.createElement('span'); c.className = 'c'; c.textContent = chordText(chordsFor(p, key));
+      b.append(r, n, c);
+      list.appendChild(b);
+    });
+  });
+  $('#sheet').hidden = false;
+  $('#sheet').scrollTop = 0;
+}
+function closeSheet() { $('#sheet').hidden = true; }
+$('#p-prog-btn').addEventListener('click', openSheet);
+$('#sheet-close').addEventListener('click', closeSheet);
+$('#sheet-list').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-id]');
+  if (!b) return;
+  practice.progId = b.dataset.id;
+  closeSheet();
+  renderPracticeHead();
+  applyPractice(true);
+});
+renderPracticeHead();
 $('#p-bpm').addEventListener('input', (e) => {
   practice.bpm = Number(e.target.value);
   bpm = practice.bpm;
@@ -1489,6 +1550,14 @@ $('#p-timer').addEventListener('click', (e) => {
   practice.minutes = Number(b.dataset.t);
   $$('#p-timer button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
   renderPracticeClock();
+});
+
+/* 3. chord blocks are tappable in the quiz and in practice */
+['#chart', '#p-chart'].forEach((sel) => {
+  $(sel).addEventListener('click', (e) => {
+    const bar = e.target.closest('.bar');
+    if (bar) jumpTo(Array.prototype.indexOf.call(bar.parentNode.children, bar));
+  });
 });
 
 /* reset asks twice; the viewer has no confirm dialog */
