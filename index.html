@@ -337,6 +337,17 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
       </div>
     </div>
 
+    <div class="panel">
+      <div class="field">
+        <span class="lbl">조성 표기</span>
+        <div class="chips" id="acc">
+          <button class="chip" type="button" data-a="flat" aria-pressed="true">♭ 플랫 (D♭, E♭)</button>
+          <button class="chip" type="button" data-a="sharp" aria-pressed="false">♯ 샵 (C♯, D♯)</button>
+        </div>
+        <p class="note">검은 건반 키의 이름을 정해요. 코드 이름은 그 키의 관습대로 나옵니다.</p>
+      </div>
+    </div>
+
     <div class="foot">
       <p class="note" id="store-note"></p>
       <button class="ghost" type="button" id="reset">기록 초기화</button>
@@ -364,7 +375,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
       <div class="field" id="key-field">
         <span class="lbl">키</span>
         <div class="keygrid" id="keygrid"></div>
-        <p class="note">키를 고르면 으뜸음(C면 도)이 짧게 울려요. 마이너 문제는 같은 이름의 마이너 키로 나와요. 랜덤이면 키가 문제마다 바뀝니다.</p>
+        <p class="note">키를 고르면 으뜸음(C면 도)이 울려요. 마이너 문제는 같은 이름의 마이너 키로 나와요. 랜덤이면 키가 문제마다 바뀝니다.</p>
       </div>
 
       <div class="field">
@@ -381,6 +392,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
             <button class="step" id="bpm-up" type="button" aria-label="템포 높이기">+</button>
           </div>
           <input id="bpm" type="range" min="60" max="160" step="1" value="100" aria-label="템포">
+          <p class="note">템포를 바꾸면 그 빠르기의 드럼이 3초쯤 울려요.</p>
         </div>
       </div>
 
@@ -529,12 +541,22 @@ const POOL = [
   { id: 'min-iv',   mode: 'minor', roman: 'iv–i–♭VII–♭VI',    name: '',                        steps: [[5, 'm'], [0, 'm'], [10, ''], [8, '']] }
 ];
 function startsOnTonic(p) { return p.steps[0][0] === 0; }
-/* Every key and chord is spelled with flats. */
 const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
-const KEY_LIST = FLAT_NAMES.map((name, pc) => ({ name: name, pc: pc }));
-const KEYS = { major: KEY_LIST, minor: KEY_LIST };
-/* accepts older sharp spellings saved on the device ('F#' -> G flat) */
-function keyByName(name) { return KEY_LIST[(NOTE_PC[name.charAt(0)] + accOf(name.charAt(1)) + 12) % 12]; }
+const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+/* How the five black-key keys are named: 'flat' (D♭) or 'sharp' (C♯). Set from the home screen. */
+let ACCIDENTAL = 'flat';
+/* white-key keys whose chords are written with flats by convention (F major; C, D, F, G minor) */
+const WHITE_FLAT = { major: { 5: true }, minor: { 0: true, 2: true, 5: true, 7: true } };
+/* Chords follow the key: a key named with a flat uses flats, one named with a sharp uses sharps, and
+   white-key keys use their usual signature (E major -> C#m, F major -> Bb). id never changes with the setting. */
+function keyObj(mode, pc) {
+  const black = [1, 3, 6, 8, 10].indexOf(pc) >= 0;
+  const flat = black ? ACCIDENTAL === 'flat' : !!WHITE_FLAT[mode][pc];
+  return { name: (black && ACCIDENTAL === 'sharp' ? SHARP_NAMES : FLAT_NAMES)[pc], pc: pc, flat: flat, id: FLAT_NAMES[pc] };
+}
+function keysFor(mode) { return FLAT_NAMES.map((n, pc) => keyObj(mode, pc)); }
+/* accepts either spelling, including ids saved earlier ('F#' and 'Gb' are the same key) */
+function keyByName(name, mode) { return keyObj(mode, (NOTE_PC[name.charAt(0)] + accOf(name.charAt(1)) + 12) % 12); }
 const SOLFEGE = { C: '도', D: '레', E: '미', F: '파', G: '솔', A: '라', B: '시' };
 const BPM_MIN = 70, BPM_MAX = 130;
 
@@ -543,7 +565,8 @@ function solfege(k) { return SOLFEGE[k.name.charAt(0)] + (k.name.length > 1 ? ac
 function modeWord(mode) { return mode === 'major' ? '메이저' : '마이너'; }
 function randomBpm() { return BPM_MIN + Math.floor(Math.random() * (BPM_MAX - BPM_MIN + 1)); }
 function chordsFor(prog, key) {
-  return prog.steps.map((s) => parseChord(FLAT_NAMES[(key.pc + s[0]) % 12] + s[1]));
+  const names = key.flat ? FLAT_NAMES : SHARP_NAMES;
+  return prog.steps.map((s) => parseChord(names[(key.pc + s[0]) % 12] + s[1]));
 }
 function chordText(chs) { return chs.map((c) => c.root + c.quality).join(' '); }
 function shuffle(a) {
@@ -573,8 +596,8 @@ function makeProgQuestion(setting, last, keyPc, forcedId) {
     answer = pickOther(group.length ? group : pool, (p) => last && p.id === last.id);
   }
   const key = (keyPc === null || keyPc === undefined)
-    ? pickOther(KEYS[mode], (k) => last && last.key === mode + k.name)
-    : KEYS[mode].find((k) => k.pc === keyPc);
+    ? pickOther(keysFor(mode), (k) => last && last.key === mode + k.id)
+    : keyObj(mode, keyPc);
   /* at least one wrong choice opens on the same chord as the answer, so the first bar alone doesn't give it away */
   const others = pool.filter((p) => p.id !== answer.id);
   const sameStart = shuffle(others.filter((p) => p.steps[0][0] === answer.steps[0][0] && p.steps[0][1].charAt(0) === answer.steps[0][1].charAt(0)));
@@ -591,15 +614,15 @@ function makeKeyQuestion(setting, last, forcedKey) {
   const mode = pickMode(setting);
   const pool = POOL.filter((p) => p.mode === mode);
   const prog = pickOther(pool, (p) => last && p.id === last.id);
-  let key = forcedKey ? keyByName(forcedKey) : null;
-  if (!key) key = pickOther(KEYS[mode], (k) => last && last.key === mode + k.name);
+  let key = forcedKey ? keyByName(forcedKey, mode) : null;
+  if (!key) key = pickOther(keysFor(mode), (k) => last && last.key === mode + k.id);
   const near = shuffle([7, 5, 2, 10]).slice(0, 2);
   const far = shuffle([1, 3, 4, 6, 8, 9, 11]).slice(0, 1);
-  const keys = shuffle([key].concat(near.concat(far).map((d) => KEYS[mode].find((k) => k.pc === (key.pc + d) % 12))));
+  const keys = shuffle([key].concat(near.concat(far).map((d) => keyObj(mode, (key.pc + d) % 12))));
   const options = keys.map((k) => ({
-    id: k.name, label: keyLabel(k) + ' ' + modeWord(mode), sub: '으뜸음 ' + solfege(k), chords: chordsFor(prog, k)
+    id: k.id, label: keyLabel(k) + ' ' + modeWord(mode), sub: '으뜸음 ' + solfege(k), chords: chordsFor(prog, k)
   }));
-  return { type: 'key', mode: mode, key: key, prog: prog, answerId: key.name, itemId: key.name, options: options, chords: chordsFor(prog, key) };
+  return { type: 'key', mode: mode, key: key, prog: prog, answerId: key.id, itemId: key.id, options: options, chords: chordsFor(prog, key) };
 }
 
 /* Voice leading: pick the inversion/octave of each chord that moves least from the previous one. */
@@ -683,7 +706,7 @@ function dayKey(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-'
 function keyToDate(k) { const p = k.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
 function addDays(k, n) { const d = keyToDate(k); d.setDate(d.getDate() + n); return dayKey(d); }
 function weekStart(k) { const d = keyToDate(k); return addDays(k, -((d.getDay() + 6) % 7)); }
-function freshData() { return { v: 1, xp: 0, days: {}, review: [], prog: {}, quests: {}, weeks: {} }; }
+function freshData() { return { v: 1, xp: 0, days: {}, review: [], prog: {}, quests: {}, weeks: {}, pref: { acc: 'flat' } }; }
 function getDay(data, k) { return data.days[k] || (data.days[k] = { q: 0, right: 0, practice: 0, best: 0, cur: 0 }); }
 function goalMet(day) { return !!day && (day.q >= GOAL_Q || day.practice >= GOAL_PRACTICE); }
 function goalRatio(day) { return day ? Math.min(1, Math.max(day.q / GOAL_Q, day.practice / GOAL_PRACTICE)) : 0; }
@@ -782,9 +805,10 @@ const Store = {
   reset() { this.data = freshData(); this.save(); }
 };
 Store.load();
+ACCIDENTAL = Store.data.pref && Store.data.pref.acc === 'sharp' ? 'sharp' : 'flat';
 function today() { return dayKey(new Date()); }
 
-try { if (window.Tone && Tone.Context) Tone.setContext(new Tone.Context({ latencyHint: 'playback', lookAhead: 0.12 })); } catch (e) {}
+try { if (window.Tone && Tone.Context) Tone.setContext(new Tone.Context({ latencyHint: 'playback', lookAhead: 0.2 })); } catch (e) {}
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -800,6 +824,8 @@ let wakeLock = null;
 let playToken = 0;
 let lastChordHit = 0, lastBassHit = 0;
 let stepBase = 0;
+let previewSteps = 0;
+let beatTimer = null;
 const layers = { chord: true, bass: true, drums: true };
 const state = {
   view: 'home', session: { kind: 'prog' }, phase: 'idle',
@@ -949,8 +975,31 @@ function tagVoices(hit, mids) {
   });
 }
 
+function playDrums(s, firstBar, time) {
+  if (s === 0 || s === 4) audio.kick.triggerAttackRelease('C2', '8n', time, 0.9);
+  if (s === 0 && firstBar) audio.crash.triggerAttackRelease('2n', time, 0.8);
+  if (s === 2 || s === 6) {
+    audio.snare.triggerAttackRelease('16n', time, 0.8);
+    audio.snareBody.triggerAttackRelease('D3', '16n', time, 0.6);
+  }
+  audio.hat.triggerAttackRelease('32n', time, jit(s % 2 === 0 ? 0.9 : 0.5));
+}
+/* What you see runs ahead of what you hear by the device's audio output delay; shift the visuals back by it. */
+function visualLag() {
+  try {
+    const raw = Tone.getContext().rawContext;
+    return Math.min(0.5, (raw.outputLatency || 0) + (raw.baseLatency || 0));
+  } catch (e) { return 0; }
+}
 function tick(time) {
   const tok = playToken;
+  /* tempo preview on the setup screen: drums only, for a few beats */
+  if (previewSteps) {
+    playDrums(step % 8, false, time);
+    step += 1;
+    if (step >= previewSteps) drawer().schedule(() => { if (tok === playToken) stop(null, true); }, time + 30 / bpm);
+    return;
+  }
   const at = step;
   const barIdx = Math.floor(step / 8) % chords.length;
   const s = step % 8;
@@ -967,21 +1016,13 @@ function tick(time) {
     else if (s === 4) audio.bass.triggerAttackRelease(c.bassPc === c.pc ? c.fifthNote : c.bassNote, '8n.', time, 0.8);
     else if (s === 6) audio.bass.triggerAttackRelease(c.bassNote, '8n', time, 0.7);
   }
-  if (layers.drums) {
-    if (s === 0 || s === 4) audio.kick.triggerAttackRelease('C2', '8n', time, 0.9);
-    if (s === 0 && barIdx === 0) audio.crash.triggerAttackRelease('2n', time, 0.8);
-    if (s === 2 || s === 6) {
-      audio.snare.triggerAttackRelease('16n', time, 0.8);
-      audio.snareBody.triggerAttackRelease('D3', '16n', time, 0.6);
-    }
-    audio.hat.triggerAttackRelease('32n', time, jit(s % 2 === 0 ? 0.9 : 0.5));
-  }
+  if (layers.drums) playDrums(s, barIdx === 0, time);
   const beat = Math.floor(s / 2);
   drawer().schedule(() => {
     if (!playing || tok !== playToken) return;
     setActive(barIdx, beat);
     if (inPractice() && at % 32 === 0) $('#p-loops').textContent = (Math.floor(at / 32) + 1) + '번째 반복';
-  }, time);
+  }, time + visualLag());
   step += 1;
 }
 
@@ -1026,6 +1067,7 @@ async function start(opts) {
   t.bpm.value = bpm;
   stepBase = (opts.bar || 0) * 8;
   step = stepBase;
+  previewSteps = opts.previewSteps || 0;
   lastChordHit = 0; lastBassHit = 0;
   if (eventId === null) eventId = t.scheduleRepeat(tick, '8n');
   const beats = opts.countIn === false ? 0 : (inPractice() ? 4 : 2);
@@ -1046,7 +1088,7 @@ async function start(opts) {
   for (let i = 0; i < beats; i++) audio.click.triggerAttackRelease(i === 0 ? 'C6' : 'G5', 0.03, t0 + i * beatSec, i === 0 ? 1 : 0.7);
   if (beats) playbackStatus('곧 시작해요');
   t.start(startAt);
-  drawer().schedule(() => { if (playing && token === playToken) playbackStatus(inPractice() ? '재생 중' : '재생 중 · 4마디 반복'); }, startAt);
+  if (!previewSteps) drawer().schedule(() => { if (playing && token === playToken) playbackStatus(inPractice() ? '재생 중' : '재생 중 · 4마디 반복'); }, startAt);
 }
 function stop(msg, quiet) {
   playToken++;
@@ -1066,6 +1108,7 @@ function stop(msg, quiet) {
   }
   step = 0;
   stepBase = 0;
+  previewSteps = 0;
   try { drawer().cancel(0); } catch (e) {}
   setActive(-1, -1);
   setPlayUi(false);
@@ -1080,16 +1123,31 @@ function jumpTo(bar) {
   if (playing) stop(null, true);
   start({ bar: bar, countIn: false });
 }
-/* a single piano key: struck, falling, then damped — about half a second in all */
+/* a single piano key, held for 0.7s and then damped */
 async function previewTonic(pc) {
   if (!(await ready())) return;
-  if (playing) return;
+  clearTimeout(beatTimer);
+  if (playing) stop(null, true);
   const ctxNow = Tone.getContext().currentTime;
   renewIntro();
   audio.clickBus.gain.cancelScheduledValues(ctxNow);
   audio.clickBus.gain.setValueAtTime(1, ctxNow);
-  audio.ref.triggerAttackRelease(midiName(60 + pc), 0.3, ctxNow + 0.03, 0.85);
+  audio.ref.triggerAttackRelease(midiName(60 + pc), 0.7, ctxNow + 0.005, 0.85);
 }
+
+/* 5. about three seconds of drums at the chosen tempo, shortly after the tempo control settles */
+function previewBeat() {
+  clearTimeout(beatTimer);
+  beatTimer = setTimeout(() => {
+    if (state.view !== 'setup' || state.bpmMode !== 'fixed') return;
+    if (playing) stop(null, true);
+    bpm = fixedBpm;
+    const beats = Math.max(4, Math.round(3 * bpm / 60));
+    start({ countIn: false, previewSteps: beats * 2 });
+  }, 250);
+}
+/* build the audio graph on the first touch, so the first sound doesn't wait for it */
+document.addEventListener('pointerdown', () => { if (window.Tone) Tone.start().then(initAudio).catch(() => {}); }, { once: true });
 
 /* layer on/off, kept in sync across screens */
 function setLayer(key, on) {
@@ -1230,6 +1288,7 @@ function renderHome() {
   $('#store-note').textContent = Store.ok ? '기록은 이 기기에만 저장돼요.' : '이 환경에서는 기록을 저장할 수 없어서, 화면을 닫으면 사라져요.';
 }
 function showHome() {
+  clearTimeout(beatTimer);
   if (playing) stop();
   closeSheet();
   state.phase = 'idle';
@@ -1246,6 +1305,7 @@ function openSetup(kind) {
   show('setup');
 }
 function startSession(kind) {
+  clearTimeout(beatTimer);
   state.session = { kind: kind };
   state.asked = 0; state.right = 0; state.streak = 0; state.last = null;
   show('quiz');
@@ -1307,7 +1367,7 @@ async function nextQuestion() {
   }
   state.q = q;
   state.phase = 'asking';
-  state.last = { id: q.prog.id, key: q.mode + q.key.name };
+  state.last = { id: q.prog.id, key: q.mode + q.key.id };
   chords = q.chords;
   if (window.Tone) prepareVoicing(chords);
   bpm = state.bpmMode === 'random' ? randomBpm() : fixedBpm;
@@ -1387,7 +1447,7 @@ function switchTo(i) {
 function practiceProg() { return POOL.find((p) => p.id === practice.progId); }
 function applyPractice(live) {
   const p = practiceProg();
-  chords = chordsFor(p, KEY_LIST[practice.keyPc]);
+  chords = chordsFor(p, keyObj(p.mode, practice.keyPc));
   if (window.Tone) prepareVoicing(chords);
   renderChart();
   if (live && playing) morph();
@@ -1458,6 +1518,7 @@ $('#bpmmodes').addEventListener('click', (e) => {
   $$('#bpmmodes button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
   $('#bpm-manual').hidden = state.bpmMode !== 'fixed';
   $('#bpm-note').hidden = state.bpmMode === 'fixed';
+  if (state.bpmMode === 'fixed') previewBeat(); else { clearTimeout(beatTimer); if (playing) stop(null, true); }
 });
 $('#layers').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-l]');
@@ -1469,6 +1530,7 @@ function setFixedBpm(v) {
   fixedBpm = Math.max(60, Math.min(160, v));
   $('#bpm').value = String(fixedBpm);
   $('#bpm-out').firstChild.nodeValue = String(fixedBpm);
+  previewBeat();
 }
 $('#bpm').addEventListener('input', (e) => setFixedBpm(Number(e.target.value)));
 $('#bpm-down').addEventListener('click', () => setFixedBpm(fixedBpm - 1));
@@ -1476,7 +1538,7 @@ $('#bpm-up').addEventListener('click', () => setFixedBpm(fixedBpm + 1));
 
 /* key pickers: one tap per key, flat spellings */
 function buildKeyGrid(el, withRandom, onPick) {
-  (withRandom ? [['random', '랜덤']] : []).concat(KEY_LIST.map((k) => [String(k.pc), keyLabel(k)])).forEach((it) => {
+  (withRandom ? [['random', '랜덤']] : []).concat(keysFor('major').map((k) => [String(k.pc), keyLabel(k)])).forEach((it) => {
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'chip'; b.dataset.k = it[0]; b.textContent = it[1];
     b.setAttribute('aria-pressed', 'false');
@@ -1487,6 +1549,11 @@ function buildKeyGrid(el, withRandom, onPick) {
     if (!b) return;
     markKeyGrid(el, b.dataset.k);
     onPick(b.dataset.k);
+  });
+}
+function relabelKeyGrids() {
+  $$('#keygrid .chip, #p-keygrid .chip').forEach((b) => {
+    if (b.dataset.k !== 'random') b.textContent = keyLabel(keyObj('major', Number(b.dataset.k)));
   });
 }
 function markKeyGrid(el, value) {
@@ -1509,8 +1576,8 @@ function renderPracticeHead() {
 function openSheet() {
   const list = $('#sheet-list');
   list.textContent = '';
-  const key = KEY_LIST[practice.keyPc];
   ['major', 'minor'].forEach((mode) => {
+    const key = keyObj(mode, practice.keyPc);
     const h = document.createElement('h2'); h.textContent = modeWord(mode); list.appendChild(h);
     POOL.filter((p) => p.mode === mode).forEach((p) => {
       const b = document.createElement('button');
@@ -1560,6 +1627,19 @@ $('#p-timer').addEventListener('click', (e) => {
   });
 });
 
+/* 1. key naming, chosen on the home screen and remembered on this device */
+function markAcc() { $$('#acc button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.a === ACCIDENTAL))); }
+$('#acc').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-a]');
+  if (!b) return;
+  ACCIDENTAL = b.dataset.a;
+  Store.data.pref = { acc: ACCIDENTAL };
+  Store.save();
+  markAcc();
+  relabelKeyGrids();
+});
+markAcc();
+
 /* reset asks twice; the viewer has no confirm dialog */
 let resetArmed = null;
 $('#reset').addEventListener('click', () => {
@@ -1567,6 +1647,7 @@ $('#reset').addEventListener('click', () => {
   if (resetArmed) {
     clearTimeout(resetArmed); resetArmed = null;
     Store.reset();
+    ACCIDENTAL = 'flat'; markAcc(); relabelKeyGrids();
     b.textContent = '기록 초기화';
     renderHome();
     return;
