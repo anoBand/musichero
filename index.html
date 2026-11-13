@@ -1,0 +1,1518 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Music Hero</title>
+<meta name="description" content="배킹을 듣고 코드 진행과 키를 맞히는 귀 훈련 앱">
+<meta name="theme-color" content="#EDF0F2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0D1518" media="(prefers-color-scheme: dark)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Music Hero">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap">
+<style>
+/* base reset */
+:root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; -webkit-tap-highlight-color: transparent; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+button, select, input { touch-action: manipulation; }
+</style>
+<style>
+/* Layout: home hub (today, modes, quests, records) -> setup -> one-screen quiz; practice is its own one-screen view. */
+:root {
+  --bg: #EDF0F2;
+  --surface: #F8FAFA;
+  --ink: #11202A;
+  --muted: #55666F;
+  --line: #C6D0D6;
+  --bar: #11202A;
+  --accent: #0B6E6A;
+  --on-accent: #F2FBFA;
+  --accent-soft: #D3EAE7;
+  --danger: #B42318;
+  --font-display: "Bricolage Grotesque", "IBM Plex Sans KR", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans KR", system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D1518;
+    --surface: #142126;
+    --ink: #E3EEF0;
+    --muted: #8DA2AA;
+    --line: #2B3D44;
+    --bar: #9FB6BD;
+    --accent: #4CCFC3;
+    --on-accent: #05211F;
+    --accent-soft: #17383A;
+    --danger: #FF8A7A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D1518;
+  --surface: #142126;
+  --ink: #E3EEF0;
+  --muted: #8DA2AA;
+  --line: #2B3D44;
+  --bar: #9FB6BD;
+  --accent: #4CCFC3;
+  --on-accent: #05211F;
+  --accent-soft: #17383A;
+  --danger: #FF8A7A;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.55 var(--font-body);
+  padding-block: 20px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+body.quizzing { padding-block: 12px 12px; }
+.app { max-width: 36rem; margin: 0 auto; }
+.view { display: grid; gap: 20px; }
+.view.tight { gap: 10px; }
+.view > * { min-width: 0; }
+
+.eyebrow { font: 500 0.75rem/1 var(--font-data); letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+h1 { margin: 8px 0 0; font: 600 1.6rem/1.25 var(--font-body); text-wrap: balance; }
+h2 { margin: 0; font: 500 0.75rem/1 var(--font-data); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.lead { margin: 6px 0 0; color: var(--muted); font-size: 0.9rem; }
+.note { margin: 0; color: var(--muted); font-size: 0.8rem; }
+.num { font-variant-numeric: tabular-nums; }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 22px; }
+.section { display: grid; gap: 10px; }
+
+/* today */
+.today { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--bar); border-radius: 10px; padding: 16px; display: grid; gap: 14px; }
+.today-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; }
+.streak { display: grid; justify-items: center; min-width: 4.5rem; }
+.streak b { font: 700 2.6rem/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.streak span { font: 500 0.7rem/1.4 var(--font-data); letter-spacing: 0.06em; color: var(--muted); }
+.goal { display: grid; gap: 6px; }
+.goal .t { font-weight: 600; }
+.goal .d { color: var(--muted); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.meter { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.level { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; font: 500 0.75rem/1 var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
+.level .meter { height: 5px; }
+
+/* mode list */
+.modes { display: grid; gap: 8px; }
+.mode {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px;
+  min-height: 62px; padding: 10px 14px; text-align: left; cursor: pointer;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-left: 3px solid var(--bar); border-radius: 8px;
+  font: inherit;
+}
+.mode:active:not(:disabled) { background: var(--accent-soft); }
+.mode:disabled { cursor: default; opacity: 0.6; }
+.mode .t { font-weight: 600; }
+.mode .d { grid-column: 1; color: var(--muted); font-size: 0.8rem; }
+.mode .go { grid-row: 1 / span 2; grid-column: 2; font: 500 1.1rem/1 var(--font-data); color: var(--muted); }
+
+/* quests */
+.quests { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.quest { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 12px; align-items: baseline; }
+.quest .q { font-size: 0.92rem; }
+.quest .p { font: 500 0.75rem/1 var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
+.quest .meter { grid-column: 1 / -1; height: 5px; }
+.quest.done .q { color: var(--muted); }
+.quest.done .p { color: var(--accent); }
+
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; margin: 0; }
+.stats div { display: grid; gap: 2px; min-width: 0; }
+.stats dt { font-size: 0.78rem; color: var(--muted); }
+.stats dd { margin: 0; font: 700 1.25rem/1.2 var(--font-display); font-variant-numeric: tabular-nums; }
+.stats dd.small { font: 500 0.9rem/1.35 var(--font-body); }
+.foot { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
+
+/* setup fields */
+.field { display: grid; gap: 8px; min-width: 0; }
+.field > .lbl { font: 500 0.75rem/1 var(--font-data); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  min-height: 40px; padding: 0 12px; cursor: pointer;
+  background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+  font: 500 0.85rem/1 var(--font-body);
+}
+.chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+select {
+  width: 100%; min-height: 46px; padding: 0 12px; box-sizing: border-box;
+  background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+  font: 500 1rem/1 var(--font-body);
+}
+.bpm-manual { display: grid; gap: 8px; }
+.bpm { display: grid; grid-template-columns: 46px 1fr 46px; align-items: center; gap: 12px; }
+.bpm output { text-align: center; font: 700 2rem/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.bpm output small { font: 500 0.7rem/1 var(--font-data); color: var(--muted); letter-spacing: 0.06em; margin-left: 4px; }
+.step { min-height: 46px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: 500 1.3rem/1 var(--font-data); cursor: pointer; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+.primary {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; min-height: 54px; border: 0; border-radius: 10px; cursor: pointer;
+  background: var(--accent); color: var(--on-accent);
+  font: 600 1.05rem/1 var(--font-body);
+}
+.primary:active { filter: brightness(0.92); }
+.primary svg, .listen svg { width: 15px; height: 15px; fill: currentColor; }
+
+/* top bar shared by quiz and practice */
+.topbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 4px 8px; }
+.meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.meta .key { font: 700 1.25rem/1.15 var(--font-display); letter-spacing: -0.01em; }
+.meta .tempo { font: 500 0.85rem/1.2 var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
+.score { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 2px 14px; font: 500 0.75rem/1.3 var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
+.score b { color: var(--ink); font-weight: 500; }
+.ghost {
+  min-height: 36px; padding: 0 12px; cursor: pointer;
+  background: transparent; color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+  font: 500 0.8rem/1 var(--font-body);
+}
+.ghost.toggle[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.ghost.toggle[aria-pressed="false"] { color: var(--muted); text-decoration: line-through; }
+.back { justify-self: start; }
+
+/* measures: always one row of four */
+.chart { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.bar {
+  display: grid; align-content: space-between; gap: 6px;
+  min-height: 3.6rem; padding: 8px 6px 8px 9px;
+  background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--bar);
+  border-radius: 7px; transition: background 0.08s, color 0.08s;
+}
+.bar.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); border-left-color: var(--bar); }
+.sym { font: 700 1.5rem/1 var(--font-display); letter-spacing: -0.02em; white-space: nowrap; }
+.sym .q { font-size: 0.55em; font-weight: 500; letter-spacing: 0; position: relative; top: -0.5em; margin-left: 0.05em; }
+.qm { font: 700 1.5rem/1 var(--font-display); color: var(--muted); }
+.bar.on .qm { color: var(--on-accent); opacity: 0.7; }
+.chart.masked .sym { display: none; }
+.chart:not(.masked) .qm { display: none; }
+.chart.big .bar { min-height: 5.2rem; }
+.chart.big .sym { font-size: 1.75rem; }
+.beats { display: flex; gap: 5px; }
+.beats i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.22; }
+.beats i.on { opacity: 1; }
+
+/* choices */
+.opts { display: grid; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 34rem) { .opts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.opt {
+  display: grid; grid-template-columns: 1.1rem minmax(0, 1fr) auto; align-items: start; gap: 6px;
+  min-height: 54px; padding: 8px 12px; text-align: left; cursor: pointer;
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-left: 3px solid var(--bar); border-radius: 8px;
+  font: inherit;
+}
+.opt:active { background: var(--accent-soft); }
+.opt .ltr { font: 500 0.75rem/1.75 var(--font-data); color: var(--muted); }
+.opt .chs { display: flex; flex-wrap: wrap; gap: 0 10px; font: 700 1.05rem/1.3 var(--font-display); }
+.opt .rm { display: block; font: 400 0.72rem/1.3 var(--font-data); color: var(--muted); }
+.opt .tag { font: 500 0.7rem/1.75 var(--font-data); color: var(--muted); }
+.opt.correct { background: var(--accent-soft); border-color: var(--accent); border-left-color: var(--accent); }
+.opt.correct .tag { color: var(--accent); }
+.opt.wrong { border-color: var(--danger); border-left-color: var(--danger); }
+.opt.wrong .tag { color: var(--danger); }
+.opt.dim { opacity: 0.6; }
+.opt.now { opacity: 1; }
+.opt.now .ltr { color: var(--accent); }
+.hint { margin: 0; font: 400 0.75rem/1.3 var(--font-body); color: var(--muted); }
+
+.status { margin: 0; min-height: 2.6em; display: flex; align-items: center; font: 400 0.82rem/1.3 var(--font-body); color: var(--muted); }
+.status.ok { color: var(--accent); font-weight: 600; }
+.status.bad { color: var(--danger); font-weight: 600; }
+
+.actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
+.view.answered .actions { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+.listen {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 50px; border-radius: 10px; cursor: pointer;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line);
+  font: 500 0.95rem/1 var(--font-body);
+}
+.actions .primary { min-height: 50px; }
+
+/* practice */
+.p-controls { display: grid; gap: 10px; }
+.p-row { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 8px; }
+.p-row select { min-height: 42px; font-size: 0.9rem; padding: 0 8px; }
+.p-tempo { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; }
+.p-tempo output { font: 500 0.85rem/1 var(--font-data); font-variant-numeric: tabular-nums; min-width: 4.6rem; }
+.p-timer { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.p-timer .chip { min-height: 36px; padding: 0 10px; }
+.p-timer .lbl { font: 500 0.75rem/1 var(--font-data); color: var(--muted); margin-right: 4px; }
+.clock { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.clock .time { font: 700 2.4rem/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.clock .time small { font: 500 0.85rem/1 var(--font-data); color: var(--muted); margin-left: 6px; }
+.clock .loops { font: 500 0.8rem/1.3 var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+@media (max-height: 600px) {
+  .bar { min-height: 3.1rem; padding-block: 6px; }
+  .chart.big .bar { min-height: 4rem; }
+  .opt { min-height: 48px; padding-block: 6px; }
+  .status { min-height: 2.3em; }
+}
+
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .bar { transition: none; } }
+</style>
+</head>
+<body>
+<main class="app">
+  <!-- home -->
+  <section class="view" id="home">
+    <header>
+      <div class="eyebrow">MVP 4 · 매일 연습</div>
+      <h1>Music Hero</h1>
+    </header>
+
+    <div class="today">
+      <div class="today-top">
+        <div class="streak"><b id="streak-n">0</b><span>일 연속</span></div>
+        <div class="goal">
+          <span class="t" id="goal-title"></span>
+          <div class="meter"><i id="goal-bar" style="width:0%"></i></div>
+          <span class="d" id="goal-detail"></span>
+        </div>
+      </div>
+      <div class="level"><span id="level-n"></span><div class="meter"><i id="level-bar" style="width:0%"></i></div><span id="level-xp"></span></div>
+    </div>
+
+    <div class="section">
+      <h2>연습</h2>
+      <div class="modes">
+        <button class="mode" type="button" id="m-prog"><span class="t">코드 진행 퀴즈</span><span class="d">배킹을 듣고 어떤 진행인지 맞히기</span><span class="go" aria-hidden="true">›</span></button>
+        <button class="mode" type="button" id="m-key"><span class="t">키 맞추기</span><span class="d">기준음 도를 듣고 배킹의 키 맞히기</span><span class="go" aria-hidden="true">›</span></button>
+        <button class="mode" type="button" id="m-practice"><span class="t">솔로 연습</span><span class="d">진행, 키, 템포를 골라 배킹과 타이머 켜기</span><span class="go" aria-hidden="true">›</span></button>
+        <button class="mode" type="button" id="m-review"><span class="t">복습</span><span class="d" id="review-desc"></span><span class="go" aria-hidden="true">›</span></button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section">
+        <h2>퀘스트</h2>
+        <ul class="quests" id="quests"></ul>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="section">
+        <h2>기록</h2>
+        <dl class="stats" id="stats"></dl>
+      </div>
+    </div>
+
+    <div class="foot">
+      <p class="note" id="store-note"></p>
+      <button class="ghost" type="button" id="reset">기록 초기화</button>
+    </div>
+  </section>
+
+  <!-- quiz setup -->
+  <section class="view" id="setup" hidden>
+    <button class="ghost back" type="button" id="setup-back">‹ 홈</button>
+    <header>
+      <h1 id="setup-title"></h1>
+      <p class="lead" id="setup-lead"></p>
+    </header>
+
+    <div class="panel">
+      <div class="field">
+        <span class="lbl">출제 범위</span>
+        <div class="chips" id="modes">
+          <button class="chip" type="button" data-m="major" aria-pressed="true">장조</button>
+          <button class="chip" type="button" data-m="minor" aria-pressed="false">단조</button>
+          <button class="chip" type="button" data-m="mixed" aria-pressed="false">섞기</button>
+        </div>
+      </div>
+
+      <div class="field" id="key-field">
+        <label class="lbl" for="keysel">키</label>
+        <select id="keysel"></select>
+        <p class="note">키를 고르면 으뜸음(C면 도)이 짧게 울려요. 단조 문제는 같은 이름의 단조 키로 나와요. 고르지 않으면 키가 문제마다 바뀝니다.</p>
+      </div>
+
+      <div class="field">
+        <span class="lbl">템포</span>
+        <div class="chips" id="bpmmodes">
+          <button class="chip" type="button" data-b="random" aria-pressed="true">랜덤</button>
+          <button class="chip" type="button" data-b="fixed" aria-pressed="false">직접 설정</button>
+        </div>
+        <p class="note" id="bpm-note">70–130 BPM 사이에서 문제마다 바뀌어요.</p>
+        <div class="bpm-manual" id="bpm-manual" hidden>
+          <div class="bpm">
+            <button class="step" id="bpm-down" type="button" aria-label="템포 낮추기">−</button>
+            <output id="bpm-out" for="bpm">100<small>BPM</small></output>
+            <button class="step" id="bpm-up" type="button" aria-label="템포 높이기">+</button>
+          </div>
+          <input id="bpm" type="range" min="60" max="160" step="1" value="100" aria-label="템포">
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="lbl">악기 켜기/끄기</span>
+        <div class="chips" id="layers">
+          <button class="chip" type="button" data-l="chord" aria-pressed="true">코드</button>
+          <button class="chip" type="button" data-l="bass" aria-pressed="true">베이스</button>
+          <button class="chip" type="button" data-l="drums" aria-pressed="true">드럼</button>
+        </div>
+      </div>
+    </div>
+
+    <button class="primary" id="start" type="button">시작</button>
+  </section>
+
+  <!-- quiz -->
+  <section class="view tight" id="quiz" hidden>
+    <div class="topbar">
+      <div class="meta"><span class="key" id="key"></span><span class="tempo" id="bpmv"></span></div>
+      <button class="ghost toggle bass-btn" type="button" aria-pressed="true">베이스</button>
+      <button class="ghost" id="quit" type="button">나가기</button>
+      <div class="score" id="score" aria-live="polite"></div>
+    </div>
+
+    <div class="chart masked" id="chart" aria-label="코드 진행"></div>
+    <div class="opts" id="opts" aria-label="보기"></div>
+    <p class="hint" id="switch-hint" hidden>다른 보기를 누르면 바로 그 보기로 바꿔 들을 수 있어요.</p>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+
+    <div class="actions">
+      <button class="listen" id="play" type="button">
+        <svg class="ico-play" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 1.5v15l13-7.5z"/></svg>
+        <svg class="ico-stop" viewBox="0 0 18 18" aria-hidden="true" hidden><rect x="3" y="3" width="12" height="12" rx="1.5"/></svg>
+        <span class="lbl-play">다시 듣기</span>
+      </button>
+      <button class="primary" id="next" type="button" hidden>다음 문제</button>
+    </div>
+  </section>
+
+  <!-- practice -->
+  <section class="view tight" id="practice" hidden>
+    <div class="topbar">
+      <div class="meta"><span class="key">솔로 연습</span></div>
+      <button class="ghost toggle bass-btn" type="button" aria-pressed="true">베이스</button>
+      <button class="ghost" id="p-quit" type="button">나가기</button>
+    </div>
+
+    <div class="p-controls">
+      <div class="p-row">
+        <select id="p-prog" aria-label="코드 진행"></select>
+        <select id="p-key" aria-label="키"></select>
+      </div>
+      <div class="p-tempo">
+        <output id="p-bpm-out" for="p-bpm">100 BPM</output>
+        <input id="p-bpm" type="range" min="50" max="180" step="1" value="100" aria-label="템포">
+      </div>
+      <div class="p-timer" id="p-timer">
+        <span class="lbl">타이머</span>
+        <button class="chip" type="button" data-t="0" aria-pressed="false">없음</button>
+        <button class="chip" type="button" data-t="5" aria-pressed="false">5분</button>
+        <button class="chip" type="button" data-t="10" aria-pressed="true">10분</button>
+        <button class="chip" type="button" data-t="15" aria-pressed="false">15분</button>
+      </div>
+    </div>
+
+    <div class="chart big" id="p-chart" aria-label="코드 진행"></div>
+
+    <div class="clock">
+      <span class="time" id="p-time">0:00</span>
+      <span class="loops" id="p-loops"></span>
+    </div>
+    <p class="status" id="p-status" role="status" aria-live="polite"></p>
+
+    <button class="primary" id="p-play" type="button">
+      <svg class="ico-play" viewBox="0 0 18 18" aria-hidden="true"><path d="M3 1.5v15l13-7.5z"/></svg>
+      <svg class="ico-stop" viewBox="0 0 18 18" aria-hidden="true" hidden><rect x="3" y="3" width="12" height="12" rx="1.5"/></svg>
+      <span class="lbl-play">재생</span>
+    </button>
+  </section>
+</main>
+
+<script src="vendor/tone-14.8.49.js"></script>
+<script>
+/*LOGIC*/
+const NOTE_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+const QUALITIES = {
+  '': [0, 4, 7], 'm': [0, 3, 7], '7': [0, 4, 7, 10], 'maj7': [0, 4, 7, 11], 'M7': [0, 4, 7, 11],
+  'm7': [0, 3, 7, 10], 'dim': [0, 3, 6], 'aug': [0, 4, 8], 'sus4': [0, 5, 7], 'sus2': [0, 2, 7],
+  '6': [0, 4, 7, 9], 'm6': [0, 3, 7, 9], 'add9': [0, 4, 7, 14]
+};
+function accOf(s) { return s === '#' ? 1 : s === 'b' ? -1 : 0; }
+function accGlyph(s) { return s === '#' ? '♯' : s === 'b' ? '♭' : ''; }
+function parseChord(raw) {
+  const token = raw.charAt(0).toUpperCase() + raw.slice(1);
+  const m = /^([A-G])([#b]?)([^/]*)(?:\/([A-G])([#b]?))?$/.exec(token);
+  if (!m) return null;
+  const intervals = QUALITIES[m[3]];
+  if (!intervals) return null;
+  const pc = (NOTE_PC[m[1]] + accOf(m[2]) + 12) % 12;
+  const bassPc = m[4] ? (NOTE_PC[m[4]] + accOf(m[5]) + 12) % 12 : pc;
+  return {
+    token: token,
+    root: m[1] + accGlyph(m[2]),
+    quality: m[3],
+    slash: m[4] ? m[4] + accGlyph(m[5]) : '',
+    pc: pc, bassPc: bassPc, intervals: intervals
+  };
+}
+
+/* Common progressions. steps = [semitones above the tonic, chord quality]. */
+const POOL = [
+  /* major, starting on I */
+  { id: 'axis',     mode: 'major', roman: 'I–V–vi–IV',        name: '팝 진행',                 steps: [[0, ''], [7, ''], [9, 'm'], [5, '']] },
+  { id: 'fifties',  mode: 'major', roman: 'I–vi–IV–V',        name: '50년대 진행',             steps: [[0, ''], [9, 'm'], [5, ''], [7, '']] },
+  { id: 'turn',     mode: 'major', roman: 'I–vi–ii–V',        name: '턴어라운드',              steps: [[0, ''], [9, 'm'], [2, 'm'], [7, '']] },
+  { id: 'three',    mode: 'major', roman: 'I–IV–V–I',         name: '기본 3코드',              steps: [[0, ''], [5, ''], [7, ''], [0, '']] },
+  { id: 'mixo',     mode: 'major', roman: 'I–♭VII–IV–I',      name: '믹솔리디안 록 진행',      steps: [[0, ''], [10, ''], [5, ''], [0, '']] },
+  /* major, starting elsewhere */
+  { id: 'axis2',    mode: 'major', roman: 'vi–IV–I–V',        name: '팝 진행 (6도 시작)',      steps: [[9, 'm'], [5, ''], [0, ''], [7, '']] },
+  { id: 'axis4',    mode: 'major', roman: 'IV–I–V–vi',        name: '팝 진행 (4도 시작)',      steps: [[5, ''], [0, ''], [7, ''], [9, 'm']] },
+  { id: 'royal',    mode: 'major', roman: 'IV–V–iii–vi',      name: '4536 진행 (로열 로드)',   steps: [[5, ''], [7, ''], [4, 'm'], [9, 'm']] },
+  { id: 'circle6',  mode: 'major', roman: 'vi–ii–V–I',        name: '5도권 진행',              steps: [[9, 'm'], [2, 'm'], [7, ''], [0, '']] },
+  { id: 'aeol',     mode: 'major', roman: 'vi–V–IV–V',        name: '',                        steps: [[9, 'm'], [7, ''], [5, ''], [7, '']] },
+  { id: 'twofive',  mode: 'major', roman: 'ii7–V7–Imaj7–Imaj7', name: '재즈 투파이브원',       steps: [[2, 'm7'], [7, '7'], [0, 'maj7'], [0, 'maj7']] },
+  /* minor, starting on i */
+  { id: 'andalus',  mode: 'minor', roman: 'i–♭VII–♭VI–V',     name: '안달루시안 진행',         steps: [[0, 'm'], [10, ''], [8, ''], [7, '']] },
+  { id: 'min-145',  mode: 'minor', roman: 'i–iv–V–i',         name: '마이너 기본 진행',        steps: [[0, 'm'], [5, 'm'], [7, ''], [0, 'm']] },
+  { id: 'min-6375', mode: 'minor', roman: 'i–♭VI–♭III–♭VII',  name: '팝 진행의 단조판',        steps: [[0, 'm'], [8, ''], [3, ''], [10, '']] },
+  { id: 'min-67',   mode: 'minor', roman: 'i–♭VI–♭VII–i',     name: '',                        steps: [[0, 'm'], [8, ''], [10, ''], [0, 'm']] },
+  { id: 'min-3',    mode: 'minor', roman: 'i–♭III–♭VII–♭VI',  name: '',                        steps: [[0, 'm'], [3, ''], [10, ''], [8, '']] },
+  /* minor, starting elsewhere */
+  { id: 'epic',     mode: 'minor', roman: '♭VI–♭VII–i–i',     name: '에픽 진행',               steps: [[8, ''], [10, ''], [0, 'm'], [0, 'm']] },
+  { id: 'min-circ', mode: 'minor', roman: 'iv–♭VII–♭III–♭VI', name: '단조 5도권 진행',         steps: [[5, 'm'], [10, ''], [3, ''], [8, '']] },
+  { id: 'min-6371', mode: 'minor', roman: '♭VI–♭III–♭VII–i',  name: '',                        steps: [[8, ''], [3, ''], [10, ''], [0, 'm']] },
+  { id: 'min-iv',   mode: 'minor', roman: 'iv–i–♭VII–♭VI',    name: '',                        steps: [[5, 'm'], [0, 'm'], [10, ''], [8, '']] }
+];
+function startsOnTonic(p) { return p.steps[0][0] === 0; }
+/* All 12 tonics per mode; flat=true spells chords with flats. */
+const KEYS = {
+  major: [
+    { name: 'C', pc: 0, flat: false }, { name: 'Db', pc: 1, flat: true }, { name: 'D', pc: 2, flat: false },
+    { name: 'Eb', pc: 3, flat: true }, { name: 'E', pc: 4, flat: false }, { name: 'F', pc: 5, flat: true },
+    { name: 'F#', pc: 6, flat: false }, { name: 'G', pc: 7, flat: false }, { name: 'Ab', pc: 8, flat: true },
+    { name: 'A', pc: 9, flat: false }, { name: 'Bb', pc: 10, flat: true }, { name: 'B', pc: 11, flat: false }
+  ],
+  minor: [
+    { name: 'C', pc: 0, flat: true }, { name: 'C#', pc: 1, flat: false }, { name: 'D', pc: 2, flat: true },
+    { name: 'Eb', pc: 3, flat: true }, { name: 'E', pc: 4, flat: false }, { name: 'F', pc: 5, flat: true },
+    { name: 'F#', pc: 6, flat: false }, { name: 'G', pc: 7, flat: true }, { name: 'G#', pc: 8, flat: false },
+    { name: 'A', pc: 9, flat: false }, { name: 'Bb', pc: 10, flat: true }, { name: 'B', pc: 11, flat: false }
+  ]
+};
+const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+const SOLFEGE = { C: '도', D: '레', E: '미', F: '파', G: '솔', A: '라', B: '시' };
+const BPM_MIN = 70, BPM_MAX = 130;
+
+function keyLabel(k) { return k.name.charAt(0) + (k.name.length > 1 ? accGlyph(k.name.charAt(1)) : ''); }
+function solfege(k) { return SOLFEGE[k.name.charAt(0)] + (k.name.length > 1 ? accGlyph(k.name.charAt(1)) : ''); }
+function modeWord(mode) { return mode === 'major' ? '장조' : '단조'; }
+function randomBpm() { return BPM_MIN + Math.floor(Math.random() * (BPM_MAX - BPM_MIN + 1)); }
+function chordsFor(prog, key) {
+  const names = key.flat ? FLAT_NAMES : SHARP_NAMES;
+  return prog.steps.map((s) => parseChord(names[(key.pc + s[0]) % 12] + s[1]));
+}
+function chordText(chs) { return chs.map((c) => c.root + c.quality).join(' '); }
+function shuffle(a) {
+  const r = a.slice();
+  for (let i = r.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = r[i]; r[i] = r[j]; r[j] = t;
+  }
+  return r;
+}
+function pickOther(list, isSame) {
+  const rest = list.filter((x) => !isSame(x));
+  const from = rest.length ? rest : list;
+  return from[Math.floor(Math.random() * from.length)];
+}
+function pickMode(setting) { return setting === 'mixed' ? (Math.random() < 0.65 ? 'major' : 'minor') : setting; }
+
+/* Which progression is this? setting: 'major' | 'minor' | 'mixed'. keyPc fixes the tonic. forcedId asks for one progression (review). */
+function makeProgQuestion(setting, last, keyPc, forcedId) {
+  const mode = pickMode(setting);
+  const pool = POOL.filter((p) => p.mode === mode);
+  let answer = forcedId ? pool.find((p) => p.id === forcedId) : null;
+  if (!answer) {
+    /* half the answers start on the tonic, half elsewhere, whatever the pool sizes */
+    const tonicFirst = Math.random() < 0.5;
+    const group = pool.filter((p) => startsOnTonic(p) === tonicFirst);
+    answer = pickOther(group.length ? group : pool, (p) => last && p.id === last.id);
+  }
+  const key = (keyPc === null || keyPc === undefined)
+    ? pickOther(KEYS[mode], (k) => last && last.key === mode + k.name)
+    : KEYS[mode].find((k) => k.pc === keyPc);
+  /* at least one wrong choice opens on the same chord as the answer, so the first bar alone doesn't give it away */
+  const others = pool.filter((p) => p.id !== answer.id);
+  const sameStart = shuffle(others.filter((p) => p.steps[0][0] === answer.steps[0][0] && p.steps[0][1].charAt(0) === answer.steps[0][1].charAt(0)));
+  const wrong = sameStart.slice(0, 1);
+  shuffle(others.filter((p) => wrong.indexOf(p) < 0)).slice(0, 3 - wrong.length).forEach((p) => wrong.push(p));
+  const options = shuffle([answer].concat(wrong)).map((p) => {
+    const chs = chordsFor(p, key);
+    return { id: p.id, label: chordText(chs), sub: p.roman, chords: chs };
+  });
+  return { type: 'prog', mode: mode, key: key, prog: answer, answerId: answer.id, itemId: answer.id, options: options, chords: chordsFor(answer, key) };
+}
+/* Which key is this? The same progression is offered in four keys; two wrong keys are close neighbours. forcedKey asks for one key (review). */
+function makeKeyQuestion(setting, last, forcedKey) {
+  const mode = pickMode(setting);
+  const pool = POOL.filter((p) => p.mode === mode);
+  const prog = pickOther(pool, (p) => last && p.id === last.id);
+  let key = forcedKey ? KEYS[mode].find((k) => k.name === forcedKey) : null;
+  if (!key) key = pickOther(KEYS[mode], (k) => last && last.key === mode + k.name);
+  const near = shuffle([7, 5, 2, 10]).slice(0, 2);
+  const far = shuffle([1, 3, 4, 6, 8, 9, 11]).slice(0, 1);
+  const keys = shuffle([key].concat(near.concat(far).map((d) => KEYS[mode].find((k) => k.pc === (key.pc + d) % 12))));
+  const options = keys.map((k) => ({
+    id: k.name, label: keyLabel(k) + ' ' + modeWord(mode), sub: '으뜸음 ' + solfege(k), chords: chordsFor(prog, k)
+  }));
+  return { type: 'key', mode: mode, key: key, prog: prog, answerId: key.name, itemId: key.name, options: options, chords: chordsFor(prog, key) };
+}
+
+/* Voice leading: pick the inversion/octave of each chord that moves least from the previous one. */
+function voicingCandidates(c) {
+  const pcs = c.intervals.map((i) => (c.pc + i) % 12);
+  const out = [];
+  for (let k = 0; k < pcs.length; k++) {
+    const rot = pcs.slice(k).concat(pcs.slice(0, k));
+    for (let low = 52; low <= 64; low++) {
+      if (low % 12 !== rot[0]) continue;
+      const notes = [low];
+      for (let j = 1; j < rot.length; j++) {
+        let n = notes[j - 1] + 1;
+        while (n % 12 !== rot[j]) n++;
+        notes.push(n);
+      }
+      out.push(notes);
+    }
+  }
+  return out;
+}
+function voicingCost(prev, cand) {
+  const top = cand[cand.length - 1];
+  const bottom = cand[0];
+  let pen = 0;
+  if (top > 76) pen += (top - 76) * 3;
+  if (bottom < 52) pen += (52 - bottom) * 3;
+  if (!prev) {
+    const mean = cand.reduce((a, b) => a + b, 0) / cand.length;
+    return Math.abs(mean - 63) + pen;
+  }
+  let d = 0;
+  cand.forEach((n) => { d += Math.min.apply(null, prev.map((p) => Math.abs(p - n))); });
+  prev.forEach((p) => { d += Math.min.apply(null, cand.map((n) => Math.abs(p - n))); });
+  return d + pen;
+}
+function voiceLeading(chs) {
+  let best = null;
+  voicingCandidates(chs[0]).forEach((first) => {
+    const seq = [first];
+    let total = voicingCost(null, first);
+    for (let i = 1; i < chs.length; i++) {
+      let pick = null, pc = Infinity;
+      voicingCandidates(chs[i]).forEach((cd) => {
+        const cost = voicingCost(seq[i - 1], cd);
+        if (cost < pc) { pc = cost; pick = cd; }
+      });
+      seq.push(pick);
+      total += pc;
+    }
+    total += voicingCost(seq[seq.length - 1], first) * 0.5;
+    if (!best || total < best.total) best = { total: total, seq: seq };
+  });
+  return best.seq;
+}
+/* closest assignment of voices to target notes; every target is used once before any is doubled */
+function assign(from, targets) {
+  let best = null, bestCost = Infinity;
+  const pick = [];
+  const used = targets.map(() => 0);
+  (function rec(i, cost) {
+    if (cost >= bestCost) return;
+    if (i === from.length) { bestCost = cost; best = pick.slice(); return; }
+    const allUsed = used.every((u) => u > 0);
+    for (let j = 0; j < targets.length; j++) {
+      if (used[j] && !allUsed) continue;
+      used[j]++;
+      pick[i] = targets[j];
+      rec(i + 1, cost + Math.abs(from[i] - targets[j]));
+      used[j]--;
+    }
+  })(0, 0);
+  return best;
+}
+
+/* ---- progress: plain data in, plain data out, so the storage behind it can change later ---- */
+const GOAL_Q = 5, GOAL_PRACTICE = 600;
+const XP_RIGHT = 10, XP_WRONG = 2, XP_PER_MIN = 5, XP_PER_LEVEL = 100;
+function pad2(n) { return (n < 10 ? '0' : '') + n; }
+function dayKey(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+function keyToDate(k) { const p = k.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+function addDays(k, n) { const d = keyToDate(k); d.setDate(d.getDate() + n); return dayKey(d); }
+function weekStart(k) { const d = keyToDate(k); return addDays(k, -((d.getDay() + 6) % 7)); }
+function freshData() { return { v: 1, xp: 0, days: {}, review: [], prog: {}, quests: {}, weeks: {} }; }
+function getDay(data, k) { return data.days[k] || (data.days[k] = { q: 0, right: 0, practice: 0, best: 0, cur: 0 }); }
+function goalMet(day) { return !!day && (day.q >= GOAL_Q || day.practice >= GOAL_PRACTICE); }
+function goalRatio(day) { return day ? Math.min(1, Math.max(day.q / GOAL_Q, day.practice / GOAL_PRACTICE)) : 0; }
+/* consecutive days with the goal met; today counts once met, and an unmet today doesn't break yesterday's run */
+function streakCount(data, k) {
+  let c = goalMet(data.days[k]) ? k : addDays(k, -1);
+  let n = 0;
+  while (goalMet(data.days[c])) { n++; c = addDays(c, -1); }
+  return n;
+}
+function weekGoalDays(data, k) {
+  const s = weekStart(k);
+  let n = 0;
+  for (let i = 0; i < 7; i++) if (goalMet(data.days[addDays(s, i)])) n++;
+  return n;
+}
+function questList(data, k) {
+  const d = data.days[k] || { q: 0, right: 0, practice: 0, best: 0, cur: 0 };
+  const claimed = data.quests[k] || [];
+  const list = [
+    { id: 'q5', scope: 'day', label: '문제 5개 풀기', cur: d.q, max: 5, unit: '문제', xp: 20 },
+    { id: 's3', scope: 'day', label: '3문제 연속으로 맞히기', cur: d.best, max: 3, unit: '연속', xp: 20 },
+    { id: 'p5', scope: 'day', label: '솔로 연습 5분', cur: Math.floor(d.practice / 60), max: 5, unit: '분', xp: 20 },
+    { id: 'w3', scope: 'week', label: '이번 주 3일 목표 달성', cur: weekGoalDays(data, k), max: 3, unit: '일', xp: 50 }
+  ];
+  list.forEach((q) => {
+    q.cur = Math.min(q.cur, q.max);
+    q.done = q.scope === 'week' ? !!data.weeks[weekStart(k)] : claimed.indexOf(q.id) >= 0;
+  });
+  return list;
+}
+/* pays out quests that just got completed; returns their labels */
+function settleQuests(data, k) {
+  const out = [];
+  questList(data, k).forEach((q) => {
+    if (q.done || q.cur < q.max) return;
+    if (q.scope === 'week') data.weeks[weekStart(k)] = true;
+    else (data.quests[k] || (data.quests[k] = [])).push(q.id);
+    data.xp += q.xp;
+    out.push(q.label);
+  });
+  return out;
+}
+/* a: { type: 'prog'|'key', id, mode, ok, review } — a wrong answer comes back for review the next day */
+function recordAnswer(data, k, a) {
+  const d = getDay(data, k);
+  d.q++;
+  if (a.ok) { d.right++; d.cur++; d.best = Math.max(d.best, d.cur); data.xp += XP_RIGHT; }
+  else { d.cur = 0; data.xp += XP_WRONG; }
+  if (a.type === 'prog') {
+    const ps = data.prog[a.id] || (data.prog[a.id] = { seen: 0, right: 0 });
+    ps.seen++;
+    if (a.ok) ps.right++;
+  }
+  const idx = data.review.findIndex((r) => r.t === a.type && r.id === a.id && r.mode === a.mode);
+  if (a.ok) { if (a.review && idx >= 0) data.review.splice(idx, 1); }
+  else if (idx >= 0) data.review[idx].due = addDays(k, 1);
+  else data.review.push({ t: a.type, id: a.id, mode: a.mode, due: addDays(k, 1) });
+  return settleQuests(data, k);
+}
+function addPractice(data, k, sec) {
+  const d = getDay(data, k);
+  const before = d.practice;
+  d.practice += sec;
+  data.xp += (Math.floor(d.practice / 60) - Math.floor(before / 60)) * XP_PER_MIN;
+  return settleQuests(data, k);
+}
+function dueReviews(data, k) { return data.review.filter((r) => r.due <= k); }
+function totals(data) {
+  let q = 0, right = 0, practice = 0;
+  Object.keys(data.days).forEach((k) => { q += data.days[k].q; right += data.days[k].right; practice += data.days[k].practice; });
+  let weak = null;
+  Object.keys(data.prog).forEach((id) => {
+    const s = data.prog[id];
+    if (s.seen < 3) return;
+    const acc = s.right / s.seen;
+    if (!weak || acc < weak.acc) weak = { id: id, acc: acc, seen: s.seen };
+  });
+  return { q: q, right: right, practice: practice, weak: weak };
+}
+/*END*/
+
+/* ---- storage: this device only. Swap load/save for a server call later; nothing else reads localStorage. ---- */
+const Store = {
+  KEY: 'chord-backing-progress-v1',
+  ok: true,
+  data: null,
+  load() {
+    let d = null;
+    try { const raw = localStorage.getItem(this.KEY); if (raw) d = JSON.parse(raw); } catch (e) { this.ok = false; }
+    this.data = d && d.v === 1 ? Object.assign(freshData(), d) : freshData();
+  },
+  save() {
+    try { localStorage.setItem(this.KEY, JSON.stringify(this.data)); } catch (e) { this.ok = false; }
+  },
+  reset() { this.data = freshData(); this.save(); }
+};
+Store.load();
+function today() { return dayKey(new Date()); }
+
+try { if (window.Tone && Tone.Context) Tone.setContext(new Tone.Context({ latencyHint: 'playback', lookAhead: 0.25 })); } catch (e) {}
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+let chords = [];
+let bpm = 100;
+let fixedBpm = 100;
+let playing = false;
+let step = 0;
+let audio = null;
+let audioPromise = null;
+let eventId = null;
+let wakeLock = null;
+let playToken = 0;
+let lastChordHit = 0, lastBassHit = 0;
+const layers = { chord: true, bass: true, drums: true };
+const state = {
+  view: 'home', session: { kind: 'prog' }, phase: 'idle',
+  setting: 'major', keyPc: null, bpmMode: 'random',
+  q: null, asked: 0, right: 0, streak: 0, last: null, nowIdx: -1
+};
+const practice = { progId: 'axis', keyPc: 0, bpm: 100, minutes: 10, sec: 0, unsaved: 0 };
+
+function transport() { return Tone.getTransport ? Tone.getTransport() : Tone.Transport; }
+function drawer() { return Tone.getDraw ? Tone.getDraw() : Tone.Draw; }
+function midiName(m) { return Tone.Frequency(m, 'midi').toNote(); }
+function prepareVoicing(chs) {
+  const voiced = voiceLeading(chs);
+  chs.forEach((c, i) => {
+    c.midi = voiced[i];
+    c.notes = voiced[i].map(midiName);
+    const bassMidi = 40 + ((c.bassPc - 4 + 12) % 12);
+    c.bassNote = midiName(bassMidi);
+    c.fifthNote = midiName(bassMidi + 7);
+  });
+}
+function jit(v) { return Math.min(1, v * (0.9 + Math.random() * 0.2)); }
+function inPractice() { return state.view === 'practice'; }
+function chartEl() { return inPractice() ? $('#p-chart') : $('#chart'); }
+
+/* chart: tiles hold the real symbols; the quiz chart stays masked until the answer */
+function renderChart() {
+  const el = chartEl();
+  el.textContent = '';
+  chords.forEach((c) => {
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    const sym = document.createElement('span'); sym.className = 'sym';
+    const root = document.createElement('span'); root.textContent = c.root; sym.appendChild(root);
+    if (c.quality) { const q = document.createElement('span'); q.className = 'q'; q.textContent = c.quality; sym.appendChild(q); }
+    const qm = document.createElement('span'); qm.className = 'qm'; qm.textContent = '?';
+    const beats = document.createElement('span'); beats.className = 'beats';
+    for (let b = 0; b < 4; b++) beats.appendChild(document.createElement('i'));
+    bar.append(sym, qm, beats);
+    el.appendChild(bar);
+  });
+}
+function setActive(barIdx, beatIdx) {
+  const bars = chartEl().children;
+  for (let i = 0; i < bars.length; i++) {
+    const on = i === barIdx;
+    bars[i].classList.toggle('on', on);
+    const dots = bars[i].querySelectorAll('.beats i');
+    dots.forEach((d, j) => d.classList.toggle('on', on && j === beatIdx));
+  }
+}
+
+/* audio. Chord and reference tone are struck like a piano key: instant attack, then the level only falls
+   (no held plateau), and letting go damps it over a third of a second. */
+function initAudio() {
+  if (!audioPromise) audioPromise = buildAudio();
+  return audioPromise;
+}
+const PIANO = {
+  harmonicity: 2,
+  modulationIndex: 3,
+  oscillator: { type: 'sine' },
+  modulation: { type: 'sine' },
+  /* sustain is a hair above zero: at exactly 0 Tone schedules an oscillator stop that breaks voice reuse */
+  envelope: { attack: 0.004, decay: 2.4, sustain: 0.002, release: 0.35 },
+  modulationEnvelope: { attack: 0.002, decay: 0.45, sustain: 0.05, release: 0.3 }
+};
+async function buildAudio() {
+  /* backing goes through a master gain that stop() fades out; count-in clicks and reference tones use their own bus */
+  const master = new Tone.Gain(1).toDestination();
+  const comp = new Tone.Compressor(-18, 3).connect(master);
+  const clickBus = new Tone.Gain(1).toDestination();
+  let reverb = null;
+  try {
+    reverb = new Tone.Reverb({ decay: 2.2, preDelay: 0.01 });
+    reverb.wet.value = 0.22;
+    await (reverb.ready || reverb.generate());
+    reverb.connect(comp);
+  } catch (e) { reverb = null; }
+  const chorus = new Tone.Chorus(4, 2.5, 0.3).start();
+  chorus.wet.value = 0.25;
+  chorus.connect(reverb || comp);
+
+  const chord = new Tone.PolySynth(Tone.FMSynth, Object.assign({ maxPolyphony: 10 }, PIANO)).connect(chorus);
+  chord.volume.value = -11;
+
+
+  const bass = new Tone.MonoSynth({
+    oscillator: { type: 'sawtooth' },
+    envelope: { attack: 0.005, decay: 0.25, sustain: 0.6, release: 0.2 },
+    filter: { type: 'lowpass', Q: 1, rolloff: -24 },
+    filterEnvelope: { attack: 0.005, decay: 0.25, sustain: 0.2, release: 0.2, baseFrequency: 140, octaves: 3 }
+  }).connect(comp);
+  bass.volume.value = -10;
+
+  const kick = new Tone.MembraneSynth({
+    pitchDecay: 0.05, octaves: 6,
+    envelope: { attack: 0.001, decay: 0.3, sustain: 0, release: 0.1 }
+  }).connect(comp);
+  kick.volume.value = -4;
+
+  const snare = new Tone.NoiseSynth({
+    noise: { type: 'pink' },
+    envelope: { attack: 0.001, decay: 0.16, sustain: 0 }
+  }).connect(comp);
+  snare.volume.value = -14;
+  const snareBody = new Tone.MembraneSynth({
+    pitchDecay: 0.01, octaves: 1.5,
+    envelope: { attack: 0.001, decay: 0.1, sustain: 0, release: 0.05 }
+  }).connect(comp);
+  snareBody.volume.value = -18;
+
+  const hatFilter = new Tone.Filter(7000, 'highpass').connect(comp);
+  const hat = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: { attack: 0.001, decay: 0.04, sustain: 0 }
+  }).connect(hatFilter);
+  hat.volume.value = -22;
+
+  const crashFilter = new Tone.Filter(5000, 'highpass').connect(reverb || comp);
+  const crash = new Tone.NoiseSynth({
+    noise: { type: 'white' },
+    envelope: { attack: 0.001, decay: 1.1, sustain: 0 }
+  }).connect(crashFilter);
+  crash.volume.value = -26;
+
+  audio = { master: master, clickBus: clickBus, click: null, chord: chord, ref: null, bass: bass, kick: kick, snare: snare, snareBody: snareBody, hat: hat, crash: crash };
+  renewIntro();
+  return audio;
+}
+/* Count-in clicks and the reference tone are queued ahead of time. A synth can't take a note earlier than one it
+   already has queued, so both are rebuilt before each use; skipping ahead mid count-in then just works. */
+function renewIntro() {
+  if (audio.click) { try { audio.click.dispose(); } catch (e) {} }
+  if (audio.ref) { try { audio.ref.dispose(); } catch (e) {} }
+  audio.click = new Tone.Synth({
+    oscillator: { type: 'triangle' },
+    envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.02 }
+  }).connect(audio.clickBus);
+  audio.click.volume.value = -8;
+  audio.ref = new Tone.FMSynth(PIANO).connect(audio.clickBus);
+  audio.ref.volume.value = -5;
+}
+function tagVoices(hit, mids) {
+  (audio.chord._activeVoices || []).forEach((v) => {
+    if (v.hit === undefined && mids.indexOf(v.midi) >= 0) v.hit = hit;
+  });
+}
+
+function tick(time) {
+  const tok = playToken;
+  const at = step;
+  const barIdx = Math.floor(step / 8) % chords.length;
+  const s = step % 8;
+  const c = chords[barIdx];
+  if (layers.chord && (s === 0 || s === 4)) {
+    lastChordHit = time;
+    audio.chord.triggerAttackRelease(c.notes, '2n', time, jit(s === 0 ? 0.85 : 0.6));
+    tagVoices(time, c.midi);
+  }
+  if (layers.bass) {
+    if (s === 0 || s === 3 || s === 4 || s === 6) lastBassHit = time;
+    if (s === 0) audio.bass.triggerAttackRelease(c.bassNote, '8n.', time, 0.9);
+    else if (s === 3) audio.bass.triggerAttackRelease(c.bassNote, '8n', time, 0.7);
+    else if (s === 4) audio.bass.triggerAttackRelease(c.bassPc === c.pc ? c.fifthNote : c.bassNote, '8n.', time, 0.8);
+    else if (s === 6) audio.bass.triggerAttackRelease(c.bassNote, '8n', time, 0.7);
+  }
+  if (layers.drums) {
+    if (s === 0 || s === 4) audio.kick.triggerAttackRelease('C2', '8n', time, 0.9);
+    if (s === 0 && barIdx === 0) audio.crash.triggerAttackRelease('2n', time, 0.8);
+    if (s === 2 || s === 6) {
+      audio.snare.triggerAttackRelease('16n', time, 0.8);
+      audio.snareBody.triggerAttackRelease('D3', '16n', time, 0.6);
+    }
+    audio.hat.triggerAttackRelease('32n', time, jit(s % 2 === 0 ? 0.9 : 0.5));
+  }
+  const beat = Math.floor(s / 2);
+  drawer().schedule(() => {
+    if (!playing || tok !== playToken) return;
+    setActive(barIdx, beat);
+    if (inPractice() && at % 32 === 0) $('#p-loops').textContent = (Math.floor(at / 32) + 1) + '번째 반복';
+  }, time);
+  step += 1;
+}
+
+/* status line: in the quiz, playback messages only show while asking, so the result stays visible after answering */
+function setStatus(t, cls) {
+  const el = inPractice() ? $('#p-status') : $('#status');
+  el.textContent = t;
+  el.className = 'status' + (cls ? ' ' + cls : '');
+}
+function playbackStatus(t) { if (inPractice() || state.phase !== 'answered') setStatus(t); }
+function setPlayUi(on) {
+  ['#play', '#p-play'].forEach((sel) => {
+    const b = $(sel);
+    b.querySelector('.ico-play').toggleAttribute('hidden', on);
+    b.querySelector('.ico-stop').toggleAttribute('hidden', !on);
+    b.querySelector('.lbl-play').textContent = on ? '정지' : (sel === '#play' ? '다시 듣기' : '재생');
+  });
+}
+async function lockScreen() {
+  try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { wakeLock = null; }
+}
+function unlockScreen() {
+  try { if (wakeLock) wakeLock.release(); } catch (e) {}
+  wakeLock = null;
+}
+
+async function ready() {
+  if (!window.Tone) { playbackStatus('소리 라이브러리를 불러오지 못했어요. 새로고침해 보세요.'); return false; }
+  try { await Tone.start(); } catch (e) { playbackStatus('브라우저가 소리 재생을 허용하지 않았어요.'); return false; }
+  try { await initAudio(); } catch (e) { playbackStatus('소리를 준비하지 못했어요. 새로고침해 보세요.'); return false; }
+  return true;
+}
+
+/* one bar of count-in clicks at the new tempo, then the backing loop. In the key quiz the reference C rings over the count-in. */
+async function start() {
+  const token = ++playToken;
+  if (!(await ready())) return;
+  if (token !== playToken) return;
+  const t = transport();
+  t.bpm.value = bpm;
+  step = 0;
+  lastChordHit = 0; lastBassHit = 0;
+  if (eventId === null) eventId = t.scheduleRepeat(tick, '8n');
+  const lead = 0.1;
+  const beatSec = 60 / bpm;
+  const now = Tone.now();
+  const t0 = now + lead;
+  const startAt = t0 + beatSec * 4;
+  playing = true;
+  setPlayUi(true);
+  lockScreen();
+  /* the backing bus stays muted until bar 1 so the previous question's tails can't bleed in */
+  audio.master.gain.cancelScheduledValues(now);
+  audio.master.gain.setValueAtTime(0, now);
+  audio.master.gain.setValueAtTime(1, startAt - 0.005);
+  renewIntro();
+  audio.clickBus.gain.cancelScheduledValues(now);
+  audio.clickBus.gain.setValueAtTime(1, now);
+  for (let i = 0; i < 4; i++) audio.click.triggerAttackRelease(i === 0 ? 'C6' : 'G5', 0.03, t0 + i * beatSec, i === 0 ? 1 : 0.7);
+  const withRef = !inPractice() && state.q && state.q.type === 'key';
+  if (withRef) audio.ref.triggerAttackRelease('C4', beatSec * 3.2, t0, 0.85);
+  playbackStatus(withRef ? '기준음 도(C) · 한 마디 뒤 배킹 시작' : '카운트인 · 한 마디 뒤 시작');
+  t.start(startAt);
+  drawer().schedule(() => { if (playing && token === playToken) playbackStatus(inPractice() ? '재생 중' : '재생 중 · 4마디 반복'); }, startAt);
+}
+function stop(msg) {
+  playToken++;
+  const was = playing;
+  playing = false;
+  if (window.Tone) {
+    transport().stop();
+    if (audio) {
+      const now = Tone.now();
+      [audio.master, audio.clickBus].forEach((g) => {
+        g.gain.cancelAndHoldAtTime(now);
+        g.gain.linearRampToValueAtTime(0, now + 0.06);
+      });
+      audio.chord.releaseAll();
+      audio.bass.triggerRelease(now);
+    }
+  }
+  step = 0;
+  try { drawer().cancel(0); } catch (e) {}
+  setActive(-1, -1);
+  setPlayUi(false);
+  playbackStatus(msg || '정지됨');
+  unlockScreen();
+  if (was && inPractice()) flushPractice();
+}
+/* a single piano key: struck, falling, then damped — about half a second in all */
+async function previewTonic(pc) {
+  if (!(await ready())) return;
+  if (playing) return;
+  const now = Tone.now();
+  renewIntro();
+  audio.clickBus.gain.cancelScheduledValues(now);
+  audio.clickBus.gain.setValueAtTime(1, now);
+  audio.ref.triggerAttackRelease(midiName(60 + pc), 0.3, now + 0.02, 0.85);
+}
+
+/* layer on/off, kept in sync across screens */
+function setLayer(key, on) {
+  layers[key] = on;
+  $$('#layers button[data-l="' + key + '"]').forEach((b) => b.setAttribute('aria-pressed', String(on)));
+  if (key === 'bass') $$('.bass-btn').forEach((b) => b.setAttribute('aria-pressed', String(on)));
+  if (!on && audio) {
+    if (key === 'bass') audio.bass.triggerRelease();
+    if (key === 'chord') audio.chord.releaseAll();
+  }
+}
+
+/* Switch chords on the spot without a new attack: the voices ringing now are retuned to the new chord, so their
+   current loudness and decay carry on. Hits already queued with the old chords are retuned 1ms after they start. */
+function morph() {
+  if (!audio) return;
+  const t = transport();
+  const ctxNow = Tone.getContext().currentTime;
+  if (t.state !== 'started' || t.getTicksAtTime(Tone.now()) <= 0) return;
+  const T0 = ctxNow + 0.01;
+  const posAt = (T) => Math.floor(t.getTicksAtTime(T) / (t.PPQ / 2));
+  const chordAt = (T) => chords[Math.floor(posAt(T) / 8) % chords.length];
+  const i0 = posAt(T0);
+  setActive(Math.floor(i0 / 8) % chords.length, Math.floor((i0 % 8) / 2));
+  /* seconds from T until the next chord hit (beats 1 and 3) */
+  const untilNextHit = (T) => {
+    const eighth = t.PPQ / 2;
+    const ticks = t.getTicksAtTime(T);
+    const next = (Math.floor(ticks / (eighth * 4)) + 1) * eighth * 4;
+    return Math.max(0.05, (next - ticks) / t.PPQ * 60 / t.bpm.value);
+  };
+  if (layers.chord) retuneChord(T0, chordAt, untilNextHit);
+  if (layers.bass) {
+    const bassAt = (T) => {
+      const s = posAt(T) % 8;
+      const cb = chordAt(T);
+      return Tone.Frequency((s === 4 || s === 5) && cb.bassPc === cb.pc ? cb.fifthNote : cb.bassNote).toFrequency();
+    };
+    audio.bass.setNote(bassAt(T0), T0);
+    if (lastBassHit + 0.001 > T0) audio.bass.setNote(bassAt(lastBassHit + 0.001), lastBassHit + 0.001);
+  }
+}
+/* Voices are grouped by the hit that started them; each group is retuned as one chord, every voice on a different note where possible. */
+function retuneChord(T0, chordAt, untilNextHit) {
+  const groups = new Map();
+  (audio.chord._activeVoices || []).forEach((v) => {
+    const k = v.hit === undefined ? -1 : v.hit;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(v);
+  });
+  let newest = null;
+  groups.forEach((vs, hit) => {
+    const T = Math.max(T0, hit + 0.001);
+    const c = chordAt(T);
+    const to = assign(vs.map((v) => (v.cur !== undefined ? v.cur : v.midi)), c.midi);
+    vs.forEach((v, j) => {
+      v.cur = to[j];
+      v.voice.setNote(Tone.Frequency(to[j], 'midi').toFrequency(), T);
+    });
+    if (vs.some((v) => !v.released) && (!newest || hit > newest.hit)) newest = { hit: hit, T: T, c: c, vs: vs };
+  });
+  /* a 4-note chord coming from a 3-note one: add the missing note at the loudness the chord has at that moment */
+  if (!newest) return;
+  const used = new Set(newest.vs.map((v) => v.cur));
+  let level = 0;
+  newest.vs.forEach((v) => {
+    if (!v.released) { try { level = Math.max(level, v.voice.envelope.getValueAtTime(newest.T + 0.006)); } catch (e) {} }
+  });
+  newest.c.midi.filter((m) => !used.has(m)).forEach((m) => {
+    if (level > 0.02) {
+      audio.chord.triggerAttackRelease(midiName(m), untilNextHit(newest.T), newest.T, Math.min(1, level));
+      tagVoices(newest.hit, [m]);
+    }
+  });
+}
+
+/* ---- views ---- */
+function show(view) {
+  state.view = view;
+  ['home', 'setup', 'quiz', 'practice'].forEach((v) => { $('#' + v).hidden = v !== view; });
+  document.body.classList.toggle('quizzing', view === 'quiz' || view === 'practice');
+  window.scrollTo(0, 0);
+}
+function fmtTime(sec) { return Math.floor(sec / 60) + ':' + pad2(sec % 60); }
+function fmtDuration(sec) {
+  const m = Math.floor(sec / 60);
+  return m >= 60 ? Math.floor(m / 60) + '시간 ' + (m % 60) + '분' : m + '분';
+}
+function renderHome() {
+  const data = Store.data;
+  const k = today();
+  const day = data.days[k] || { q: 0, right: 0, practice: 0 };
+  const met = goalMet(day);
+  $('#streak-n').textContent = String(streakCount(data, k));
+  $('#goal-title').textContent = met ? '오늘 목표를 달성했어요' : '오늘 목표: 5문제 또는 연습 10분';
+  $('#goal-bar').style.width = Math.round(goalRatio(day) * 100) + '%';
+  $('#goal-detail').textContent = '문제 ' + Math.min(day.q, GOAL_Q) + '/' + GOAL_Q + ' · 연습 ' + Math.min(Math.floor(day.practice / 60), GOAL_PRACTICE / 60) + '/' + (GOAL_PRACTICE / 60) + '분';
+  $('#level-n').textContent = '레벨 ' + (Math.floor(data.xp / XP_PER_LEVEL) + 1);
+  $('#level-bar').style.width = (data.xp % XP_PER_LEVEL) + '%';
+  $('#level-xp').textContent = (data.xp % XP_PER_LEVEL) + '/' + XP_PER_LEVEL + ' XP';
+
+  const due = dueReviews(data, k).length;
+  const later = data.review.length - due;
+  $('#m-review').disabled = due === 0;
+  $('#review-desc').textContent = due ? '틀렸던 문제 ' + due + '개 다시 풀기' : (later ? '내일 다시 풀 문제 ' + later + '개' : '틀린 문제는 다음 날 여기에 나와요');
+
+  const ql = $('#quests');
+  ql.textContent = '';
+  questList(data, k).forEach((q) => {
+    const li = document.createElement('li');
+    li.className = 'quest' + (q.done ? ' done' : '');
+    const t = document.createElement('span'); t.className = 'q'; t.textContent = q.label + (q.scope === 'week' ? '' : ' (오늘)');
+    const p = document.createElement('span'); p.className = 'p';
+    p.textContent = q.done ? '완료 +' + q.xp + ' XP' : q.cur + '/' + q.max + q.unit + ' · +' + q.xp + ' XP';
+    const m = document.createElement('div'); m.className = 'meter';
+    const bar = document.createElement('i'); bar.style.width = Math.round(q.cur / q.max * 100) + '%';
+    m.appendChild(bar);
+    li.append(t, p, m);
+    ql.appendChild(li);
+  });
+
+  const tot = totals(data);
+  const st = $('#stats');
+  st.textContent = '';
+  const weakProg = tot.weak ? POOL.find((p) => p.id === tot.weak.id) : null;
+  [
+    ['푼 문제', tot.q + '문제', false],
+    ['정답률', tot.q ? Math.round(tot.right / tot.q * 100) + '%' : '-', false],
+    ['연습 시간', fmtDuration(tot.practice), false],
+    ['가장 약한 진행', weakProg ? weakProg.roman + ' (' + Math.round(tot.weak.acc * 100) + '%)' : '3번 이상 푼 진행부터 나와요', true]
+  ].forEach((r) => {
+    const div = document.createElement('div');
+    const dt = document.createElement('dt'); dt.textContent = r[0];
+    const dd = document.createElement('dd'); dd.textContent = r[1]; if (r[2]) dd.className = 'small';
+    div.append(dt, dd);
+    st.appendChild(div);
+  });
+  $('#store-note').textContent = Store.ok ? '기록은 이 기기에만 저장돼요.' : '이 환경에서는 기록을 저장할 수 없어서, 화면을 닫으면 사라져요.';
+}
+function showHome() {
+  if (playing) stop();
+  state.phase = 'idle';
+  show('home');
+  renderHome();
+}
+function openSetup(kind) {
+  state.session = { kind: kind };
+  $('#setup-title').textContent = kind === 'key' ? '키 맞추기' : '코드 진행 퀴즈';
+  $('#setup-lead').textContent = kind === 'key'
+    ? '기준음 도(C)가 먼저 울리고 배킹이 시작돼요. 어떤 키인지 4개 중에서 고르세요.'
+    : '배킹을 듣고 어떤 코드 진행인지 4개 보기 중에서 맞춰보세요.';
+  $('#key-field').hidden = kind === 'key';
+  show('setup');
+}
+function startSession(kind) {
+  state.session = { kind: kind };
+  state.asked = 0; state.right = 0; state.streak = 0; state.last = null;
+  show('quiz');
+  nextQuestion();
+}
+
+/* ---- quiz ---- */
+function updateScore() {
+  const el = $('#score');
+  el.textContent = '';
+  const parts = [];
+  if (state.session.kind === 'review') parts.push(['복습', '남은 ' + dueReviews(Store.data, today()).length + '개']);
+  parts.push(['문제', String(state.phase === 'answered' ? state.asked : state.asked + 1)]);
+  parts.push(['정답', state.right + '/' + state.asked]);
+  parts.push(['연속', String(state.streak)]);
+  parts.forEach((p) => {
+    const span = document.createElement('span');
+    span.append(p[0] + ' ');
+    const b = document.createElement('b'); b.textContent = p[1];
+    span.appendChild(b);
+    el.appendChild(span);
+  });
+}
+function renderOptions() {
+  const el = $('#opts');
+  el.textContent = '';
+  state.q.options.forEach((o, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'opt';
+    b.dataset.i = String(i);
+    const ltr = document.createElement('span'); ltr.className = 'ltr'; ltr.textContent = 'ABCD'.charAt(i);
+    const body = document.createElement('span');
+    const chs = document.createElement('span'); chs.className = 'chs';
+    (state.q.type === 'key' ? [o.label] : o.chords.map((c) => c.root + c.quality)).forEach((txt) => {
+      const s = document.createElement('span'); s.textContent = txt; chs.appendChild(s);
+    });
+    const rm = document.createElement('span'); rm.className = 'rm'; rm.textContent = o.sub;
+    body.append(chs, rm);
+    const tag = document.createElement('span'); tag.className = 'tag';
+    b.append(ltr, body, tag);
+    el.appendChild(b);
+  });
+}
+async function nextQuestion() {
+  if (playing) stop();
+  const s = state.session;
+  let q;
+  if (s.kind === 'review') {
+    const due = dueReviews(Store.data, today());
+    if (!due.length) { showHome(); return; }
+    const it = due[0];
+    q = it.t === 'key' ? makeKeyQuestion(it.mode, null, it.id) : makeProgQuestion(it.mode, null, null, it.id);
+  } else if (s.kind === 'key') {
+    q = makeKeyQuestion(state.setting, state.last);
+  } else {
+    q = makeProgQuestion(state.setting, state.last, state.keyPc);
+  }
+  state.q = q;
+  state.phase = 'asking';
+  state.last = { id: q.prog.id, key: q.mode + q.key.name };
+  chords = q.chords;
+  if (window.Tone) prepareVoicing(chords);
+  bpm = state.bpmMode === 'random' ? randomBpm() : fixedBpm;
+  $('#key').textContent = q.type === 'key' ? '키 ?' : keyLabel(q.key) + ' ' + modeWord(q.mode);
+  $('#bpmv').textContent = bpm + ' BPM';
+  renderChart();
+  $('#chart').classList.add('masked');
+  renderOptions();
+  $('#quiz').classList.remove('answered');
+  $('#switch-hint').hidden = true;
+  state.nowIdx = -1;
+  $('#next').hidden = true;
+  setStatus('');
+  updateScore();
+  await start();
+}
+function answer(i) {
+  if (state.phase !== 'asking') return;
+  state.phase = 'answered';
+  const q = state.q;
+  const ok = q.options[i].id === q.answerId;
+  state.asked += 1;
+  if (ok) { state.right += 1; state.streak += 1; } else { state.streak = 0; }
+  const doneQuests = recordAnswer(Store.data, today(), { type: q.type, id: q.itemId, mode: q.mode, ok: ok, review: state.session.kind === 'review' });
+  Store.save();
+
+  const btns = $('#opts').children;
+  let correctLetter = '';
+  q.options.forEach((o, j) => {
+    const b = btns[j];
+    const tag = b.querySelector('.tag');
+    if (o.id === q.answerId) { b.classList.add('correct'); tag.textContent = '정답'; correctLetter = 'ABCD'.charAt(j); }
+    else if (j === i) { b.classList.add('wrong'); tag.textContent = '내 선택'; }
+    else { b.classList.add('dim'); }
+  });
+  $('#chart').classList.remove('masked');
+  const keyText = keyLabel(q.key) + ' ' + modeWord(q.mode);
+  $('#key').textContent = keyText;
+
+  const detail = q.type === 'key'
+    ? keyText + ' · ' + q.prog.roman
+    : q.prog.roman + (q.prog.name ? ' · ' + q.prog.name : '');
+  let msg = ok ? '정답입니다 · ' + detail : '아쉬워요 · 정답은 ' + correctLetter + ' (' + detail + ')';
+  if (doneQuests.length) msg += ' · 퀘스트 완료: ' + doneQuests.join(', ');
+  setStatus(msg, ok ? 'ok' : 'bad');
+  $('#quiz').classList.add('answered');
+  const reviewDone = state.session.kind === 'review' && !dueReviews(Store.data, today()).length;
+  $('#next').textContent = reviewDone ? '복습 끝내기' : '다음 문제';
+  $('#next').hidden = false;
+  $('#switch-hint').hidden = false;
+  state.nowIdx = q.options.findIndex((o) => o.id === q.answerId);
+  markNow();
+  updateScore();
+}
+function markNow() {
+  const btns = $('#opts').children;
+  for (let j = 0; j < btns.length; j++) {
+    const on = j === state.nowIdx;
+    btns[j].classList.toggle('now', on);
+    if (on) btns[j].setAttribute('aria-current', 'true'); else btns[j].removeAttribute('aria-current');
+    btns[j].querySelector('.ltr').textContent = on ? '▶' : 'ABCD'.charAt(j);
+  }
+}
+function switchTo(i) {
+  if (i === state.nowIdx) { if (!playing) start(); return; }
+  const o = state.q.options[i];
+  if (window.Tone) prepareVoicing(o.chords);
+  state.nowIdx = i;
+  markNow();
+  chords = o.chords;
+  renderChart();
+  if (!playing) { start(); return; }
+  morph();
+}
+
+/* ---- solo practice ---- */
+function practiceProg() { return POOL.find((p) => p.id === practice.progId); }
+function applyPractice(live) {
+  const p = practiceProg();
+  const key = KEYS[p.mode].find((k) => k.pc === practice.keyPc);
+  chords = chordsFor(p, key);
+  if (window.Tone) prepareVoicing(chords);
+  renderChart();
+  if (live && playing) morph();
+}
+function renderPracticeClock() {
+  const target = practice.minutes * 60;
+  const el = $('#p-time');
+  el.textContent = fmtTime(practice.sec);
+  if (target) { const sm = document.createElement('small'); sm.textContent = '/ ' + fmtTime(target); el.appendChild(sm); }
+}
+function flushPractice() {
+  if (!practice.unsaved) return;
+  addPractice(Store.data, today(), practice.unsaved);
+  practice.unsaved = 0;
+  Store.save();
+}
+function openPractice() {
+  if (playing) stop();
+  show('practice');
+  practice.sec = 0; practice.unsaved = 0;
+  bpm = practice.bpm;
+  $('#p-loops').textContent = '';
+  setStatus('진행과 키, 템포를 고르고 재생을 누르세요. 재생 중에 바꿔도 바로 이어져요.');
+  applyPractice(false);
+  renderPracticeClock();
+}
+setInterval(() => {
+  if (!playing || !inPractice()) return;
+  practice.sec += 1;
+  practice.unsaved += 1;
+  if (practice.unsaved >= 10) flushPractice();
+  renderPracticeClock();
+  if (practice.minutes && practice.sec >= practice.minutes * 60) {
+    stop('설정한 ' + practice.minutes + '분이 끝났어요. 수고했어요.');
+    practice.sec = 0;
+  }
+}, 1000);
+
+/* ---- wiring ---- */
+$('#m-prog').addEventListener('click', () => openSetup('prog'));
+$('#m-key').addEventListener('click', () => openSetup('key'));
+$('#m-practice').addEventListener('click', openPractice);
+$('#m-review').addEventListener('click', () => startSession('review'));
+$('#setup-back').addEventListener('click', showHome);
+$('#start').addEventListener('click', () => startSession(state.session.kind));
+$('#quit').addEventListener('click', showHome);
+$('#p-quit').addEventListener('click', showHome);
+$('#next').addEventListener('click', () => { nextQuestion(); });
+$('#opts').addEventListener('click', (e) => {
+  const b = e.target.closest('button.opt');
+  if (!b) return;
+  const i = Number(b.dataset.i);
+  if (state.phase === 'asking') answer(i);
+  else if (state.phase === 'answered') switchTo(i);
+});
+$('#play').addEventListener('click', () => { if (playing) stop(); else start(); });
+$('#p-play').addEventListener('click', () => { if (playing) stop(); else start(); });
+$('#modes').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-m]');
+  if (!b) return;
+  state.setting = b.dataset.m;
+  $$('#modes button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+});
+$('#bpmmodes').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-b]');
+  if (!b) return;
+  state.bpmMode = b.dataset.b;
+  $$('#bpmmodes button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  $('#bpm-manual').hidden = state.bpmMode !== 'fixed';
+  $('#bpm-note').hidden = state.bpmMode === 'fixed';
+});
+$('#layers').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-l]');
+  if (!b) return;
+  setLayer(b.dataset.l, !layers[b.dataset.l]);
+});
+$$('.bass-btn').forEach((b) => b.addEventListener('click', () => setLayer('bass', !layers.bass)));
+function setFixedBpm(v) {
+  fixedBpm = Math.max(60, Math.min(160, v));
+  $('#bpm').value = String(fixedBpm);
+  $('#bpm-out').firstChild.nodeValue = String(fixedBpm);
+}
+$('#bpm').addEventListener('input', (e) => setFixedBpm(Number(e.target.value)));
+$('#bpm-down').addEventListener('click', () => setFixedBpm(fixedBpm - 1));
+$('#bpm-up').addEventListener('click', () => setFixedBpm(fixedBpm + 1));
+
+const KEY_LABELS = ['C (도)', 'C♯/D♭ (도♯/레♭)', 'D (레)', 'D♯/E♭ (레♯/미♭)', 'E (미)', 'F (파)', 'F♯/G♭ (파♯/솔♭)', 'G (솔)', 'G♯/A♭ (솔♯/라♭)', 'A (라)', 'A♯/B♭ (라♯/시♭)', 'B (시)'];
+function addOption(sel, value, text, parent) {
+  const opt = document.createElement('option');
+  opt.value = value;
+  opt.textContent = text;
+  (parent || sel).appendChild(opt);
+}
+const keySel = $('#keysel');
+addOption(keySel, 'random', '랜덤');
+KEY_LABELS.forEach((l, i) => addOption(keySel, String(i), l));
+keySel.addEventListener('change', () => {
+  state.keyPc = keySel.value === 'random' ? null : Number(keySel.value);
+  if (state.keyPc !== null) previewTonic(state.keyPc);
+});
+
+/* practice controls */
+const pProg = $('#p-prog');
+['major', 'minor'].forEach((mode) => {
+  const g = document.createElement('optgroup');
+  g.label = modeWord(mode);
+  POOL.filter((p) => p.mode === mode).forEach((p) => addOption(pProg, p.id, p.roman + (p.name ? ' · ' + p.name : ''), g));
+  pProg.appendChild(g);
+});
+const pKey = $('#p-key');
+function fillPracticeKeys() {
+  const mode = practiceProg().mode;
+  pKey.textContent = '';
+  KEYS[mode].forEach((k) => addOption(pKey, String(k.pc), keyLabel(k) + ' ' + modeWord(mode)));
+  pKey.value = String(practice.keyPc);
+}
+pProg.value = practice.progId;
+fillPracticeKeys();
+pProg.addEventListener('change', () => { practice.progId = pProg.value; fillPracticeKeys(); applyPractice(true); });
+pKey.addEventListener('change', () => { practice.keyPc = Number(pKey.value); applyPractice(true); });
+$('#p-bpm').addEventListener('input', (e) => {
+  practice.bpm = Number(e.target.value);
+  bpm = practice.bpm;
+  $('#p-bpm-out').textContent = bpm + ' BPM';
+  if (window.Tone && playing) transport().bpm.value = bpm;
+});
+$('#p-timer').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-t]');
+  if (!b) return;
+  practice.minutes = Number(b.dataset.t);
+  $$('#p-timer button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  renderPracticeClock();
+});
+
+/* reset asks twice; the viewer has no confirm dialog */
+let resetArmed = null;
+$('#reset').addEventListener('click', () => {
+  const b = $('#reset');
+  if (resetArmed) {
+    clearTimeout(resetArmed); resetArmed = null;
+    Store.reset();
+    b.textContent = '기록 초기화';
+    renderHome();
+    return;
+  }
+  b.textContent = '한 번 더 누르면 모두 지워져요';
+  resetArmed = setTimeout(() => { resetArmed = null; b.textContent = '기록 초기화'; }, 4000);
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden) flushPractice(); });
+
+renderHome();
+
+/* offline + installable */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+}
+</script>
+</body>
+</html>
