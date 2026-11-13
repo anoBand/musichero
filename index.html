@@ -98,11 +98,47 @@ h2 { margin: 0; font: 500 0.75rem/1 var(--font-data); letter-spacing: 0.06em; te
 /* today */
 .today { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--bar); border-radius: 10px; padding: 16px; display: grid; gap: 14px; }
 .today-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; }
-.streak { display: grid; justify-items: center; min-width: 4.5rem; }
-.streak b { font: 700 2.6rem/1 var(--font-display); font-variant-numeric: tabular-nums; }
-.streak span { font: 500 0.7rem/1.4 var(--font-data); letter-spacing: 0.06em; color: var(--muted); }
+#theme[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.home-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.cal { position: relative; display: grid; justify-items: center; gap: 4px; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer; font: inherit; }
+.cal svg { width: 4.4rem; height: 4.4rem; display: block; }
+.cal .cal-body { fill: var(--bg); stroke: var(--bar); stroke-width: 3; }
+.cal .cal-top { fill: var(--accent); }
+.cal .cal-ring { fill: var(--bar); }
+.cal b { position: absolute; top: 1.55rem; left: 0; right: 0; text-align: center; font: 700 1.7rem/1.9rem var(--font-display); font-variant-numeric: tabular-nums; }
+.cal span { font: 500 0.7rem/1.2 var(--font-data); letter-spacing: 0.06em; color: var(--muted); }
+.cal:active svg { transform: scale(0.96); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { min-width: 44px; min-height: 36px; border: 0; background: transparent; color: var(--muted); font: 600 1rem/1 var(--font-body); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); }
+.custom { display: grid; gap: 22px; }
+
+/* activity calendar */
+.heat-wrap { display: grid; gap: 4px; }
+.heat-months { display: grid; grid-template-columns: repeat(17, minmax(0, 1fr)); gap: 3px; margin-left: 22px; font: 500 0.65rem/1.2 var(--font-data); color: var(--muted); white-space: nowrap; }
+.heat-body { display: grid; grid-template-columns: 19px minmax(0, 1fr); gap: 3px; }
+.heat-days { display: grid; grid-template-rows: repeat(7, 1fr); gap: 3px; font: 500 0.62rem/1 var(--font-data); color: var(--muted); align-items: center; }
+.heat { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, auto); grid-template-columns: repeat(17, minmax(0, 1fr)); gap: 3px; }
+.heat button { aspect-ratio: 1; width: 100%; padding: 0; border: 0; border-radius: 3px; cursor: pointer; }
+.heat button[data-l="0"], .heat-legend i[data-l="0"] { background: var(--line); }
+.heat button[data-l="1"], .heat-legend i[data-l="1"] { background: color-mix(in srgb, var(--accent) 30%, var(--surface)); }
+.heat button[data-l="2"], .heat-legend i[data-l="2"] { background: color-mix(in srgb, var(--accent) 55%, var(--surface)); }
+.heat button[data-l="3"], .heat-legend i[data-l="3"] { background: color-mix(in srgb, var(--accent) 80%, var(--surface)); }
+.heat button[data-l="4"], .heat-legend i[data-l="4"] { background: var(--accent); }
+.heat button.future { visibility: hidden; }
+.heat button.today { outline: 2px solid var(--ink); outline-offset: 1px; }
+.heat button.sel { outline: 2px solid var(--accent); outline-offset: 1px; }
+.heat-legend { display: flex; align-items: center; justify-content: flex-end; gap: 4px; font: 500 0.65rem/1 var(--font-data); color: var(--muted); }
+.heat-legend i { width: 11px; height: 11px; border-radius: 3px; }
+.acc-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.acc-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 12px; align-items: baseline; }
+.acc-list .r { font: 700 0.95rem/1.3 var(--font-display); }
+.acc-list .r small { font: 400 0.75rem/1.3 var(--font-body); color: var(--muted); margin-left: 6px; }
+.acc-list .p { font: 500 0.75rem/1 var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
+.acc-list .meter { grid-column: 1 / -1; height: 5px; }
 .goal { display: grid; gap: 6px; }
-.goal .t { font-weight: 600; }
+.goal .t { font-weight: 600; font-size: 0.95rem; text-wrap: balance; }
 .goal .d { color: var(--muted); font-size: 0.82rem; font-variant-numeric: tabular-nums; }
 .meter { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
 .meter i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
@@ -171,7 +207,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .primary svg, .listen svg { width: 15px; height: 15px; fill: currentColor; }
 
 /* top bar shared by quiz and practice */
-.topbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 4px 8px; }
+.topbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 4px 6px; }
+.topbar .ghost { padding: 0 9px; }
 .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
 .meta .key { font: 700 1.25rem/1.15 var(--font-display); letter-spacing: -0.01em; }
 .meta .tempo { font: 500 0.85rem/1.2 var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -296,14 +333,25 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 <main class="app">
   <!-- home -->
   <section class="view" id="home">
-    <header>
-      <div class="eyebrow">MVP 4 · 매일 연습</div>
-      <h1>Music Hero</h1>
+    <header class="home-head">
+      <div>
+        <div class="eyebrow">매일 연습</div>
+        <h1>Music Hero</h1>
+      </div>
+      <button class="ghost" type="button" id="theme" aria-pressed="false">다크 모드</button>
     </header>
 
     <div class="today">
       <div class="today-top">
-        <div class="streak"><b id="streak-n">0</b><span>일 연속</span></div>
+        <button class="cal" type="button" id="cal" aria-label="기록 보기">
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <rect class="cal-body" x="5" y="10" width="54" height="49" rx="8"/>
+            <path class="cal-top" d="M5 18a8 8 0 0 1 8-8h38a8 8 0 0 1 8 8v6H5z"/>
+            <rect class="cal-ring" x="18" y="4" width="5" height="13" rx="2.5"/><rect class="cal-ring" x="41" y="4" width="5" height="13" rx="2.5"/>
+          </svg>
+          <b id="streak-n">0</b>
+          <span>일 연속</span>
+        </button>
         <div class="goal">
           <span class="t" id="goal-title"></span>
           <div class="meter"><i id="goal-bar" style="width:0%"></i></div>
@@ -330,27 +378,48 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
       </div>
     </div>
 
+    <p class="note" id="store-note" hidden>이 환경에서는 기록을 저장할 수 없어서, 화면을 닫으면 사라져요.</p>
+    <div class="foot">
+      <div class="seg" id="acc" role="group" aria-label="조성 표기">
+        <button type="button" data-a="flat" aria-pressed="true" aria-label="플랫 표기">♭</button>
+        <button type="button" data-a="sharp" aria-pressed="false" aria-label="샵 표기">♯</button>
+      </div>
+      <button class="ghost" type="button" id="reset">기록 초기화</button>
+    </div>
+  </section>
+
+  <!-- records: activity calendar and detailed stats -->
+  <section class="view" id="records" hidden>
+    <button class="ghost back" type="button" id="rec-back">‹ 홈</button>
+    <header>
+      <h1>기록</h1>
+      <p class="lead" id="rec-lead"></p>
+    </header>
     <div class="panel">
       <div class="section">
-        <h2>기록</h2>
+        <h2>최근 17주</h2>
+        <div class="heat-wrap">
+          <div class="heat-months" id="heat-months"></div>
+          <div class="heat-body">
+            <div class="heat-days"><span>월</span><span></span><span>수</span><span></span><span>금</span><span></span><span></span></div>
+            <div class="heat" id="heat"></div>
+          </div>
+        </div>
+        <div class="heat-legend"><span>적음</span><i data-l="0"></i><i data-l="1"></i><i data-l="2"></i><i data-l="3"></i><i data-l="4"></i><span>많음</span></div>
+        <p class="note" id="heat-detail"></p>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="section">
+        <h2>통계</h2>
         <dl class="stats" id="stats"></dl>
       </div>
     </div>
-
     <div class="panel">
-      <div class="field">
-        <span class="lbl">조성 표기</span>
-        <div class="chips" id="acc">
-          <button class="chip" type="button" data-a="flat" aria-pressed="true">♭ 플랫 (D♭, E♭)</button>
-          <button class="chip" type="button" data-a="sharp" aria-pressed="false">♯ 샵 (C♯, D♯)</button>
-        </div>
-        <p class="note">검은 건반 키의 이름을 정해요. 코드 이름은 그 키의 관습대로 나옵니다.</p>
+      <div class="section">
+        <h2>진행별 정답률</h2>
+        <ul class="acc-list" id="acc-list"></ul>
       </div>
-    </div>
-
-    <div class="foot">
-      <p class="note" id="store-note"></p>
-      <button class="ghost" type="button" id="reset">기록 초기화</button>
     </div>
   </section>
 
@@ -363,6 +432,18 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
     </header>
 
     <div class="panel">
+      <div class="field">
+        <span class="lbl">난이도</span>
+        <div class="chips" id="levels">
+          <button class="chip" type="button" data-v="easy" aria-pressed="true">하수</button>
+          <button class="chip" type="button" data-v="mid" aria-pressed="false">중수</button>
+          <button class="chip" type="button" data-v="hard" aria-pressed="false">고수</button>
+          <button class="chip" type="button" data-v="custom" aria-pressed="false">상세 설정</button>
+        </div>
+        <p class="note" id="level-note"></p>
+      </div>
+
+      <div class="custom" id="custom-fields" hidden>
       <div class="field">
         <span class="lbl">출제 범위</span>
         <div class="chips" id="modes">
@@ -396,11 +477,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
         </div>
       </div>
 
+      </div>
+
       <div class="field">
         <span class="lbl">악기 켜기/끄기</span>
         <div class="chips" id="layers">
           <button class="chip" type="button" data-l="chord" aria-pressed="true">코드</button>
           <button class="chip" type="button" data-l="bass" aria-pressed="true">베이스</button>
+          <button class="chip" type="button" data-l="melody" aria-pressed="true">멜로디</button>
           <button class="chip" type="button" data-l="drums" aria-pressed="true">드럼</button>
         </div>
       </div>
@@ -413,7 +497,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   <section class="view tight" id="quiz" hidden>
     <div class="topbar">
       <div class="meta"><span class="key" id="key"></span><span class="tempo" id="bpmv"></span></div>
-      <button class="ghost toggle bass-btn" type="button" aria-pressed="true">베이스</button>
+      <button class="ghost toggle layer-btn" type="button" data-l="bass" aria-pressed="true">베이스</button>
+      <button class="ghost toggle layer-btn" type="button" data-l="melody" aria-pressed="true">멜로디</button>
       <button class="ghost" id="quit" type="button">나가기</button>
       <div class="score" id="score" aria-live="polite"></div>
     </div>
@@ -437,7 +522,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   <section class="view tight" id="practice" hidden>
     <div class="topbar">
       <div class="meta"><span class="key">솔로 연습</span></div>
-      <button class="ghost toggle bass-btn" type="button" aria-pressed="true">베이스</button>
+      <button class="ghost toggle layer-btn" type="button" data-l="bass" aria-pressed="true">베이스</button>
+      <button class="ghost toggle layer-btn" type="button" data-l="melody" aria-pressed="true">멜로디</button>
       <button class="ghost" id="p-quit" type="button">나가기</button>
     </div>
 
@@ -541,6 +627,21 @@ const POOL = [
   { id: 'min-iv',   mode: 'minor', roman: 'iv–i–♭VII–♭VI',    name: '',                        steps: [[5, 'm'], [0, 'm'], [10, ''], [8, '']] }
 ];
 function startsOnTonic(p) { return p.steps[0][0] === 0; }
+/* Difficulty presets: which progressions, which keys, which tempo range.
+   하수: major only, the four everyday chords (I IV V vi), common keys, a steady medium tempo.
+   중수: adds ii and iii, the usual minor loops, more keys, a wider tempo range.
+   고수: everything, including borrowed chords and 7ths, in all twelve keys. */
+const LEVELS = {
+  easy: { label: '하수', setting: 'major', ids: ['axis', 'fifties', 'three', 'axis2', 'axis4'],
+          keys: { major: [0, 7, 2, 5, 9], minor: [9, 4, 2] }, bpm: [80, 100] },
+  mid:  { label: '중수', setting: 'mixed',
+          ids: ['axis', 'fifties', 'turn', 'three', 'axis2', 'axis4', 'royal', 'circle6', 'aeol', 'andalus', 'min-145', 'min-6375', 'min-67', 'epic'],
+          keys: { major: [0, 2, 4, 5, 7, 9, 10, 3], minor: [9, 4, 2, 11, 7, 0] }, bpm: [75, 120] },
+  hard: { label: '고수', setting: 'mixed', ids: null, keys: null, bpm: [70, 140] }
+};
+function poolFor(mode, cfg) { return POOL.filter((p) => p.mode === mode && (!cfg || !cfg.ids || cfg.ids.indexOf(p.id) >= 0)); }
+function keyChoices(mode, cfg) { return keysFor(mode).filter((k) => !cfg || !cfg.keys || cfg.keys[mode].indexOf(k.pc) >= 0); }
+function randomIn(range) { return range[0] + Math.floor(Math.random() * (range[1] - range[0] + 1)); }
 const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
 const SHARP_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 /* How the five black-key keys are named: 'flat' (D♭) or 'sharp' (C♯). Set from the home screen. */
@@ -585,9 +686,9 @@ function pickOther(list, isSame) {
 function pickMode(setting) { return setting === 'mixed' ? (Math.random() < 0.65 ? 'major' : 'minor') : setting; }
 
 /* Which progression is this? setting: 'major' | 'minor' | 'mixed'. keyPc fixes the tonic. forcedId asks for one progression (review). */
-function makeProgQuestion(setting, last, keyPc, forcedId) {
+function makeProgQuestion(setting, last, keyPc, forcedId, cfg) {
   const mode = pickMode(setting);
-  const pool = POOL.filter((p) => p.mode === mode);
+  const pool = poolFor(mode, cfg);
   let answer = forcedId ? pool.find((p) => p.id === forcedId) : null;
   if (!answer) {
     /* half the answers start on the tonic, half elsewhere, whatever the pool sizes */
@@ -596,7 +697,7 @@ function makeProgQuestion(setting, last, keyPc, forcedId) {
     answer = pickOther(group.length ? group : pool, (p) => last && p.id === last.id);
   }
   const key = (keyPc === null || keyPc === undefined)
-    ? pickOther(keysFor(mode), (k) => last && last.key === mode + k.id)
+    ? pickOther(keyChoices(mode, cfg), (k) => last && last.key === mode + k.id)
     : keyObj(mode, keyPc);
   /* at least one wrong choice opens on the same chord as the answer, so the first bar alone doesn't give it away */
   const others = pool.filter((p) => p.id !== answer.id);
@@ -610,12 +711,12 @@ function makeProgQuestion(setting, last, keyPc, forcedId) {
   return { type: 'prog', mode: mode, key: key, prog: answer, answerId: answer.id, itemId: answer.id, options: options, chords: chordsFor(answer, key) };
 }
 /* Which key is this? The same progression is offered in four keys; two wrong keys are close neighbours. forcedKey asks for one key (review). */
-function makeKeyQuestion(setting, last, forcedKey) {
+function makeKeyQuestion(setting, last, forcedKey, cfg) {
   const mode = pickMode(setting);
-  const pool = POOL.filter((p) => p.mode === mode);
+  const pool = poolFor(mode, cfg);
   const prog = pickOther(pool, (p) => last && p.id === last.id);
   let key = forcedKey ? keyByName(forcedKey, mode) : null;
-  if (!key) key = pickOther(keysFor(mode), (k) => last && last.key === mode + k.id);
+  if (!key) key = pickOther(keyChoices(mode, cfg), (k) => last && last.key === mode + k.id);
   const near = shuffle([7, 5, 2, 10]).slice(0, 2);
   const far = shuffle([1, 3, 4, 6, 8, 9, 11]).slice(0, 1);
   const keys = shuffle([key].concat(near.concat(far).map((d) => keyObj(mode, (key.pc + d) % 12))));
@@ -774,6 +875,21 @@ function addPractice(data, k, sec) {
   data.xp += (Math.floor(d.practice / 60) - Math.floor(before / 60)) * XP_PER_MIN;
   return settleQuests(data, k);
 }
+function activityLevel(day) {
+  if (!day) return 0;
+  const r = Math.max(day.q / GOAL_Q, day.practice / GOAL_PRACTICE);
+  return r <= 0 ? 0 : r < 0.5 ? 1 : r < 1 ? 2 : r < 2 ? 3 : 4;
+}
+function longestStreak(data) {
+  let best = 0;
+  Object.keys(data.days).filter((k) => goalMet(data.days[k])).forEach((k) => {
+    if (goalMet(data.days[addDays(k, -1)])) return;
+    let n = 0, c = k;
+    while (goalMet(data.days[c])) { n++; c = addDays(c, 1); }
+    best = Math.max(best, n);
+  });
+  return best;
+}
 function dueReviews(data, k) { return data.review.filter((r) => r.due <= k); }
 function totals(data) {
   let q = 0, right = 0, practice = 0;
@@ -805,7 +921,8 @@ const Store = {
   reset() { this.data = freshData(); this.save(); }
 };
 Store.load();
-ACCIDENTAL = Store.data.pref && Store.data.pref.acc === 'sharp' ? 'sharp' : 'flat';
+if (!Store.data.pref) Store.data.pref = { acc: 'flat' };
+ACCIDENTAL = Store.data.pref.acc === 'sharp' ? 'sharp' : 'flat';
 function today() { return dayKey(new Date()); }
 
 try { if (window.Tone && Tone.Context) Tone.setContext(new Tone.Context({ latencyHint: 'playback', lookAhead: 0.2 })); } catch (e) {}
@@ -822,16 +939,17 @@ let audioPromise = null;
 let eventId = null;
 let wakeLock = null;
 let playToken = 0;
-let lastChordHit = 0, lastBassHit = 0;
+let lastChordHit = 0, lastBassHit = 0, lastMelHit = 0;
 let stepBase = 0;
 let previewSteps = 0;
 let beatTimer = null;
-const layers = { chord: true, bass: true, drums: true };
+const layers = { chord: true, bass: true, melody: true, drums: true };
 const state = {
   view: 'home', session: { kind: 'prog' }, phase: 'idle',
-  setting: 'major', keyPc: null, bpmMode: 'random',
+  level: 'easy', setting: 'major', keyPc: null, bpmMode: 'random',
   q: null, asked: 0, right: 0, streak: 0, last: null, nowIdx: -1
 };
+if (LEVELS[Store.data.pref.level] || Store.data.pref.level === 'custom') state.level = Store.data.pref.level;
 const practice = { progId: 'axis', keyPc: 0, bpm: 100, minutes: 10, sec: 0, unsaved: 0 };
 
 function transport() { return Tone.getTransport ? Tone.getTransport() : Tone.Transport; }
@@ -844,7 +962,8 @@ function prepareVoicing(chs) {
     c.notes = voiced[i].map(midiName);
     const bassMidi = 40 + ((c.bassPc - 4 + 12) % 12);
     c.bassNote = midiName(bassMidi);
-    c.fifthNote = midiName(bassMidi + 7);
+    c.melNote = midiName(bassMidi + 12);
+    c.melFifth = midiName(bassMidi + 19);
   });
 }
 function jit(v) { return Math.min(1, v * (0.9 + Math.random() * 0.2)); }
@@ -921,6 +1040,15 @@ async function buildAudio() {
   }).connect(comp);
   bass.volume.value = -10;
 
+  /* the moving line (root, root, fifth, root) that used to be the bass, one octave up */
+  const melody = new Tone.MonoSynth({
+    oscillator: { type: 'triangle' },
+    envelope: { attack: 0.005, decay: 0.2, sustain: 0.5, release: 0.2 },
+    filter: { type: 'lowpass', Q: 1, rolloff: -12 },
+    filterEnvelope: { attack: 0.005, decay: 0.2, sustain: 0.4, release: 0.2, baseFrequency: 500, octaves: 2.5 }
+  }).connect(reverb || comp);
+  melody.volume.value = -12;
+
   const kick = new Tone.MembraneSynth({
     pitchDecay: 0.05, octaves: 6,
     envelope: { attack: 0.001, decay: 0.3, sustain: 0, release: 0.1 }
@@ -952,7 +1080,7 @@ async function buildAudio() {
   }).connect(crashFilter);
   crash.volume.value = -26;
 
-  audio = { master: master, clickBus: clickBus, click: null, chord: chord, ref: null, bass: bass, kick: kick, snare: snare, snareBody: snareBody, hat: hat, crash: crash };
+  audio = { master: master, clickBus: clickBus, click: null, chord: chord, ref: null, bass: bass, melody: melody, kick: kick, snare: snare, snareBody: snareBody, hat: hat, crash: crash };
   renewIntro();
   return audio;
 }
@@ -1009,12 +1137,17 @@ function tick(time) {
     audio.chord.triggerAttackRelease(c.notes, '2n', time, jit(s === 0 ? 0.85 : 0.6));
     tagVoices(time, c.midi);
   }
-  if (layers.bass) {
-    if (s === 0 || s === 3 || s === 4 || s === 6) lastBassHit = time;
-    if (s === 0) audio.bass.triggerAttackRelease(c.bassNote, '8n.', time, 0.9);
-    else if (s === 3) audio.bass.triggerAttackRelease(c.bassNote, '8n', time, 0.7);
-    else if (s === 4) audio.bass.triggerAttackRelease(c.bassPc === c.pc ? c.fifthNote : c.bassNote, '8n.', time, 0.8);
-    else if (s === 6) audio.bass.triggerAttackRelease(c.bassNote, '8n', time, 0.7);
+  /* bass: the chord root only, on beats 1 and 3 */
+  if (layers.bass && (s === 0 || s === 4)) {
+    lastBassHit = time;
+    audio.bass.triggerAttackRelease(c.bassNote, '2n', time, s === 0 ? 0.9 : 0.75);
+  }
+  if (layers.melody) {
+    if (s === 0 || s === 3 || s === 4 || s === 6) lastMelHit = time;
+    if (s === 0) audio.melody.triggerAttackRelease(c.melNote, '8n.', time, 0.9);
+    else if (s === 3) audio.melody.triggerAttackRelease(c.melNote, '8n', time, 0.7);
+    else if (s === 4) audio.melody.triggerAttackRelease(c.bassPc === c.pc ? c.melFifth : c.melNote, '8n.', time, 0.8);
+    else if (s === 6) audio.melody.triggerAttackRelease(c.melNote, '8n', time, 0.7);
   }
   if (layers.drums) playDrums(s, barIdx === 0, time);
   const beat = Math.floor(s / 2);
@@ -1068,7 +1201,7 @@ async function start(opts) {
   stepBase = (opts.bar || 0) * 8;
   step = stepBase;
   previewSteps = opts.previewSteps || 0;
-  lastChordHit = 0; lastBassHit = 0;
+  lastChordHit = 0; lastBassHit = 0; lastMelHit = 0;
   if (eventId === null) eventId = t.scheduleRepeat(tick, '8n');
   const beats = opts.countIn === false ? 0 : (inPractice() ? 4 : 2);
   const beatSec = 60 / bpm;
@@ -1104,6 +1237,7 @@ function stop(msg, quiet) {
       });
       audio.chord.releaseAll();
       audio.bass.triggerRelease(Tone.now());
+      audio.melody.triggerRelease(Tone.now());
     }
   }
   step = 0;
@@ -1139,7 +1273,7 @@ async function previewTonic(pc) {
 function previewBeat() {
   clearTimeout(beatTimer);
   beatTimer = setTimeout(() => {
-    if (state.view !== 'setup' || state.bpmMode !== 'fixed') return;
+    if (state.view !== 'setup' || state.bpmMode !== 'fixed' || LEVELS[state.level]) return;
     if (playing) stop(null, true);
     bpm = fixedBpm;
     const beats = Math.max(4, Math.round(3 * bpm / 60));
@@ -1152,10 +1286,10 @@ document.addEventListener('pointerdown', () => { if (window.Tone) Tone.start().t
 /* layer on/off, kept in sync across screens */
 function setLayer(key, on) {
   layers[key] = on;
-  $$('#layers button[data-l="' + key + '"]').forEach((b) => b.setAttribute('aria-pressed', String(on)));
-  if (key === 'bass') $$('.bass-btn').forEach((b) => b.setAttribute('aria-pressed', String(on)));
+  $$('button[data-l="' + key + '"]').forEach((b) => b.setAttribute('aria-pressed', String(on)));
   if (!on && audio) {
     if (key === 'bass') audio.bass.triggerRelease();
+    if (key === 'melody') audio.melody.triggerRelease();
     if (key === 'chord') audio.chord.releaseAll();
   }
 }
@@ -1181,13 +1315,18 @@ function morph() {
   };
   if (layers.chord) retuneChord(T0, chordAt, untilNextHit);
   if (layers.bass) {
-    const bassAt = (T) => {
-      const s = posAt(T) % 8;
-      const cb = chordAt(T);
-      return Tone.Frequency((s === 4 || s === 5) && cb.bassPc === cb.pc ? cb.fifthNote : cb.bassNote).toFrequency();
-    };
+    const bassAt = (T) => Tone.Frequency(chordAt(T).bassNote).toFrequency();
     audio.bass.setNote(bassAt(T0), T0);
     if (lastBassHit + 0.001 > T0) audio.bass.setNote(bassAt(lastBassHit + 0.001), lastBassHit + 0.001);
+  }
+  if (layers.melody) {
+    const melAt = (T) => {
+      const s = posAt(T) % 8;
+      const cb = chordAt(T);
+      return Tone.Frequency((s === 4 || s === 5) && cb.bassPc === cb.pc ? cb.melFifth : cb.melNote).toFrequency();
+    };
+    audio.melody.setNote(melAt(T0), T0);
+    if (lastMelHit + 0.001 > T0) audio.melody.setNote(melAt(lastMelHit + 0.001), lastMelHit + 0.001);
   }
 }
 /* Voices are grouped by the hit that started them; each group is retuned as one chord, every voice on a different note where possible. */
@@ -1227,7 +1366,7 @@ function retuneChord(T0, chordAt, untilNextHit) {
 /* ---- views ---- */
 function show(view) {
   state.view = view;
-  ['home', 'setup', 'quiz', 'practice'].forEach((v) => { $('#' + v).hidden = v !== view; });
+  ['home', 'records', 'setup', 'quiz', 'practice'].forEach((v) => { $('#' + v).hidden = v !== view; });
   document.body.classList.toggle('quizzing', view === 'quiz' || view === 'practice');
   window.scrollTo(0, 0);
 }
@@ -1269,24 +1408,87 @@ function renderHome() {
     ql.appendChild(li);
   });
 
+  $('#store-note').hidden = Store.ok;
+}
+/* ---- records: activity calendar (17 weeks) and detailed stats ---- */
+const HEAT_WEEKS = 17;
+function dayDetail(k) {
+  const d = Store.data.days[k];
+  const dt = keyToDate(k);
+  const head = (dt.getMonth() + 1) + '월 ' + dt.getDate() + '일';
+  if (!d || (!d.q && !d.practice)) return head + ' · 기록 없음';
+  return head + ' · 문제 ' + d.q + '개 (정답 ' + d.right + ') · 연습 ' + Math.floor(d.practice / 60) + '분' + (goalMet(d) ? ' · 목표 달성' : '');
+}
+function renderRecords() {
+  const data = Store.data;
+  const k = today();
+  $('#rec-lead').textContent = '지금 ' + streakCount(data, k) + '일 연속 · 최장 ' + longestStreak(data) + '일 연속';
+  const first = addDays(weekStart(k), -7 * (HEAT_WEEKS - 1));
+  const heat = $('#heat'), months = $('#heat-months');
+  heat.textContent = ''; months.textContent = '';
+  const weekMonth = [];
+  for (let w = 0; w < HEAT_WEEKS; w++) weekMonth.push(keyToDate(addDays(first, w * 7 + 6)).getMonth());
+  for (let w = 0; w < HEAT_WEEKS; w++) {
+    const m = document.createElement('span');
+    const wk = addDays(first, w * 7);
+    const mo = weekMonth[w];
+    /* label a month where it starts, if it has room (at least two columns) */
+    if ((w === 0 || weekMonth[w - 1] !== mo) && weekMonth[w + 1] === mo) m.textContent = (mo + 1) + '월';
+    months.appendChild(m);
+    for (let d = 0; d < 7; d++) {
+      const dk = addDays(wk, d);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.k = dk;
+      b.dataset.l = String(activityLevel(data.days[dk]));
+      b.setAttribute('aria-label', dayDetail(dk));
+      if (dk > k) b.className = 'future';
+      else if (dk === k) b.className = 'today sel';
+      heat.appendChild(b);
+    }
+  }
+  $('#heat-detail').textContent = dayDetail(k);
+
   const tot = totals(data);
   const st = $('#stats');
   st.textContent = '';
-  const weakProg = tot.weak ? POOL.find((p) => p.id === tot.weak.id) : null;
+  const active = Object.keys(data.days).filter((dk) => data.days[dk].q || data.days[dk].practice).length;
   [
-    ['푼 문제', tot.q + '문제', false],
-    ['정답률', tot.q ? Math.round(tot.right / tot.q * 100) + '%' : '-', false],
-    ['연습 시간', fmtDuration(tot.practice), false],
-    ['가장 약한 진행', weakProg ? weakProg.roman + ' (' + Math.round(tot.weak.acc * 100) + '%)' : '3번 이상 푼 진행부터 나와요', true]
+    ['푼 문제', tot.q + '문제'],
+    ['정답률', tot.q ? Math.round(tot.right / tot.q * 100) + '%' : '-'],
+    ['연습 시간', fmtDuration(tot.practice)],
+    ['연습한 날', active + '일'],
+    ['레벨', String(Math.floor(data.xp / XP_PER_LEVEL) + 1)],
+    ['누적 XP', String(data.xp)]
   ].forEach((r) => {
     const div = document.createElement('div');
     const dt = document.createElement('dt'); dt.textContent = r[0];
-    const dd = document.createElement('dd'); dd.textContent = r[1]; if (r[2]) dd.className = 'small';
+    const dd = document.createElement('dd'); dd.textContent = r[1];
     div.append(dt, dd);
     st.appendChild(div);
   });
-  $('#store-note').textContent = Store.ok ? '기록은 이 기기에만 저장돼요.' : '이 환경에서는 기록을 저장할 수 없어서, 화면을 닫으면 사라져요.';
+
+  const list = $('#acc-list');
+  list.textContent = '';
+  const rows = POOL.filter((p) => data.prog[p.id] && data.prog[p.id].seen).map((p) => ({ p: p, s: data.prog[p.id] }))
+    .sort((a, b) => a.s.right / a.s.seen - b.s.right / b.s.seen);
+  if (!rows.length) {
+    const li = document.createElement('li');
+    const t = document.createElement('span'); t.className = 'p'; t.textContent = '코드 진행 퀴즈를 풀면 진행별 정답률이 여기에 쌓여요.';
+    li.appendChild(t); list.appendChild(li);
+  }
+  rows.forEach((r) => {
+    const li = document.createElement('li');
+    const t = document.createElement('span'); t.className = 'r'; t.textContent = r.p.roman;
+    const sm = document.createElement('small'); sm.textContent = (r.p.name ? r.p.name + ' · ' : '') + modeWord(r.p.mode); t.appendChild(sm);
+    const pc = document.createElement('span'); pc.className = 'p'; pc.textContent = Math.round(r.s.right / r.s.seen * 100) + '% · ' + r.s.right + '/' + r.s.seen;
+    const m = document.createElement('div'); m.className = 'meter';
+    const bar = document.createElement('i'); bar.style.width = Math.round(r.s.right / r.s.seen * 100) + '%'; m.appendChild(bar);
+    li.append(t, pc, m);
+    list.appendChild(li);
+  });
 }
+function openRecords() { show('records'); renderRecords(); }
 function showHome() {
   clearTimeout(beatTimer);
   if (playing) stop();
@@ -1302,7 +1504,21 @@ function openSetup(kind) {
     ? '배킹을 듣고 어떤 키인지 4개 중에서 고르세요.'
     : '배킹을 듣고 어떤 코드 진행인지 4개 보기 중에서 맞춰보세요.';
   $('#key-field').hidden = kind === 'key';
+  renderLevel();
   show('setup');
+}
+/* 5. difficulty: a preset fixes range, keys and tempo; 상세 설정 opens the individual controls */
+function renderLevel() {
+  $$('#levels button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === state.level)));
+  const lv = LEVELS[state.level];
+  $('#custom-fields').hidden = !!lv;
+  const note = $('#level-note');
+  note.hidden = !lv;
+  if (!lv) return;
+  const count = (mode) => poolFor(mode, lv).length;
+  const range = lv.setting === 'major' ? '메이저 진행 ' + count('major') + '개' : '메이저 ' + count('major') + '개 · 마이너 ' + count('minor') + '개 진행';
+  const keys = lv.keys ? '키 ' + lv.keys.major.map((pc) => keyLabel(keyObj('major', pc))).join(' ') + (lv.setting === 'major' ? '' : ' / ' + lv.keys.minor.map((pc) => keyLabel(keyObj('minor', pc)) + 'm').join(' ')) : '12개 키 전부';
+  note.textContent = range + ' · ' + keys + ' · ' + lv.bpm[0] + '–' + lv.bpm[1] + ' BPM';
 }
 function startSession(kind) {
   clearTimeout(beatTimer);
@@ -1360,17 +1576,20 @@ async function nextQuestion() {
     const it = due[0];
     s.item = it;
     q = it.t === 'key' ? makeKeyQuestion(it.mode, null, it.id) : makeProgQuestion(it.mode, null, null, it.id);
-  } else if (s.kind === 'key') {
-    q = makeKeyQuestion(state.setting, state.last);
   } else {
-    q = makeProgQuestion(state.setting, state.last, state.keyPc);
+    const lv = LEVELS[state.level] || null;
+    const setting = lv ? lv.setting : state.setting;
+    q = s.kind === 'key'
+      ? makeKeyQuestion(setting, state.last, null, lv)
+      : makeProgQuestion(setting, state.last, lv ? null : state.keyPc, null, lv);
   }
   state.q = q;
   state.phase = 'asking';
   state.last = { id: q.prog.id, key: q.mode + q.key.id };
   chords = q.chords;
   if (window.Tone) prepareVoicing(chords);
-  bpm = state.bpmMode === 'random' ? randomBpm() : fixedBpm;
+  const lvNow = s.kind === 'review' ? null : LEVELS[state.level];
+  bpm = lvNow ? randomIn(lvNow.bpm) : (s.kind === 'review' || state.bpmMode === 'random' ? randomBpm() : fixedBpm);
   $('#key').textContent = q.type === 'key' ? '키 ?' : keyLabel(q.key) + ' ' + modeWord(q.mode);
   $('#bpmv').textContent = bpm + ' BPM';
   renderChart();
@@ -1492,6 +1711,45 @@ $('#m-key').addEventListener('click', () => openSetup('key'));
 $('#m-practice').addEventListener('click', openPractice);
 $('#m-review').addEventListener('click', () => startSession('review'));
 $('#setup-back').addEventListener('click', showHome);
+$('#rec-back').addEventListener('click', showHome);
+$('#cal').addEventListener('click', openRecords);
+$('#heat').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-k]');
+  if (!b) return;
+  $$('#heat .sel').forEach((x) => x.classList.remove('sel'));
+  b.classList.add('sel');
+  $('#heat-detail').textContent = dayDetail(b.dataset.k);
+});
+$('#levels').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-v]');
+  if (!b) return;
+  state.level = b.dataset.v;
+  Store.data.pref.level = state.level;
+  Store.save();
+  clearTimeout(beatTimer);
+  if (playing) stop(null, true);
+  renderLevel();
+});
+
+/* 4. dark mode: follows the system until the button is used, then remembers the choice */
+function currentTheme() {
+  const t = document.documentElement.dataset.theme;
+  if (t) return t;
+  return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+function applyTheme(t) {
+  if (t) document.documentElement.dataset.theme = t;
+  const dark = currentTheme() === 'dark';
+  $('#theme').setAttribute('aria-pressed', String(dark));
+  $$('meta[name="theme-color"]').forEach((m) => { if (t) { m.removeAttribute('media'); m.setAttribute('content', dark ? '#0D1518' : '#EDF0F2'); } });
+}
+$('#theme').addEventListener('click', () => {
+  const next = currentTheme() === 'dark' ? 'light' : 'dark';
+  Store.data.pref.theme = next;
+  Store.save();
+  applyTheme(next);
+});
+applyTheme(Store.data.pref.theme || null);
 $('#start').addEventListener('click', () => startSession(state.session.kind));
 $('#quit').addEventListener('click', showHome);
 $('#p-quit').addEventListener('click', showHome);
@@ -1525,7 +1783,7 @@ $('#layers').addEventListener('click', (e) => {
   if (!b) return;
   setLayer(b.dataset.l, !layers[b.dataset.l]);
 });
-$$('.bass-btn').forEach((b) => b.addEventListener('click', () => setLayer('bass', !layers.bass)));
+$$('.layer-btn').forEach((b) => b.addEventListener('click', () => setLayer(b.dataset.l, !layers[b.dataset.l])));
 function setFixedBpm(v) {
   fixedBpm = Math.max(60, Math.min(160, v));
   $('#bpm').value = String(fixedBpm);
@@ -1633,10 +1891,11 @@ $('#acc').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-a]');
   if (!b) return;
   ACCIDENTAL = b.dataset.a;
-  Store.data.pref = { acc: ACCIDENTAL };
+  Store.data.pref.acc = ACCIDENTAL;
   Store.save();
   markAcc();
   relabelKeyGrids();
+  renderLevel();
 });
 markAcc();
 
@@ -1646,8 +1905,10 @@ $('#reset').addEventListener('click', () => {
   const b = $('#reset');
   if (resetArmed) {
     clearTimeout(resetArmed); resetArmed = null;
+    const keep = Store.data.pref;
     Store.reset();
-    ACCIDENTAL = 'flat'; markAcc(); relabelKeyGrids();
+    Store.data.pref = keep;
+    Store.save();
     b.textContent = '기록 초기화';
     renderHome();
     return;
