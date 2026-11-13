@@ -113,6 +113,7 @@ h2 { margin: 0; font: 500 0.75rem/1 var(--font-data); letter-spacing: 0.06em; te
 .seg button + button { border-left: 1px solid var(--line); }
 .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); }
 .custom { display: grid; gap: 22px; }
+.suggest { justify-self: start; min-height: 34px; font-size: 0.8rem; }
 
 /* activity calendar */
 .heat-wrap { display: grid; gap: 4px; }
@@ -273,7 +274,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .status.bad { color: var(--danger); font-weight: 600; }
 
 .actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; }
-.view.answered .actions { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+.view.answered .actions, .view.picking .actions { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+.primary:disabled { opacity: 0.45; cursor: default; }
+.opt.sel { background: var(--accent-soft); border-color: var(--accent); border-left-color: var(--accent); }
 .listen {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   min-height: 50px; border-radius: 10px; cursor: pointer;
@@ -365,7 +368,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
       <h2>연습</h2>
       <div class="modes">
         <button class="mode" type="button" id="m-prog"><span class="t">코드 진행 퀴즈</span><span class="d">배킹을 듣고 어떤 진행인지 맞히기</span><span class="go" aria-hidden="true">›</span></button>
-        <button class="mode" type="button" id="m-key"><span class="t">키 맞추기</span><span class="d">배킹을 듣고 어떤 키인지 맞히기</span><span class="go" aria-hidden="true">›</span></button>
+        <button class="mode" type="button" id="m-key"><span class="t">키 맞추기</span><span class="d">배킹에 음을 얹어 보며 으뜸음 찾기</span><span class="go" aria-hidden="true">›</span></button>
         <button class="mode" type="button" id="m-practice"><span class="t">솔로 연습</span><span class="d">진행, 키, 템포를 골라 배킹과 타이머 켜기</span><span class="go" aria-hidden="true">›</span></button>
         <button class="mode" type="button" id="m-review"><span class="t">복습</span><span class="d" id="review-desc"></span><span class="go" aria-hidden="true">›</span></button>
       </div>
@@ -514,6 +517,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
         <svg class="ico-stop" viewBox="0 0 18 18" aria-hidden="true" hidden><rect x="3" y="3" width="12" height="12" rx="1.5"/></svg>
         <span class="lbl-play">다시 듣기</span>
       </button>
+      <button class="primary" id="confirm" type="button" hidden disabled>이 음으로 답하기</button>
       <button class="primary" id="next" type="button" hidden>다음 문제</button>
     </div>
   </section>
@@ -534,6 +538,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
         <span class="c">변경</span>
       </button>
       <div class="keygrid" id="p-keygrid" aria-label="키"></div>
+      <button class="chip suggest" type="button" id="p-suggest" hidden></button>
       <div class="p-tempo">
         <output id="p-bpm-out" for="p-bpm">100 BPM</output>
         <input id="p-bpm" type="range" min="50" max="180" step="1" value="100" aria-label="템포">
@@ -614,6 +619,9 @@ const POOL = [
   { id: 'circle6',  mode: 'major', roman: 'vi–ii–V–I',        name: '5도권 진행',              steps: [[9, 'm'], [2, 'm'], [7, ''], [0, '']] },
   { id: 'aeol',     mode: 'major', roman: 'vi–V–IV–V',        name: '',                        steps: [[9, 'm'], [7, ''], [5, ''], [7, '']] },
   { id: 'twofive',  mode: 'major', roman: 'ii7–V7–Imaj7–Imaj7', name: '재즈 투파이브원',       steps: [[2, 'm7'], [7, '7'], [0, 'maj7'], [0, 'maj7']] },
+  { id: 'desc-vi',  mode: 'major', roman: 'vi–V–IV–I',        name: '순차 하행 진행',          steps: [[9, 'm'], [7, ''], [5, ''], [0, '']] },
+  { id: 'min-plagal', mode: 'major', roman: 'IV–iv–I–I',      name: '마이너 플래걸 진행',      steps: [[5, ''], [5, 'm'], [0, ''], [0, '']] },
+  { id: 'sec-dom',  mode: 'major', roman: 'I–III7–vi–IV',     name: '세컨더리 도미넌트 진행',  steps: [[0, ''], [4, '7'], [9, 'm'], [5, '']] },
   /* minor, starting on i */
   { id: 'andalus',  mode: 'minor', roman: 'i–♭VII–♭VI–V',     name: '안달루시안 진행',         steps: [[0, 'm'], [10, ''], [8, ''], [7, '']] },
   { id: 'min-145',  mode: 'minor', roman: 'i–iv–V–i',         name: '마이너 기본 진행',        steps: [[0, 'm'], [5, 'm'], [7, ''], [0, 'm']] },
@@ -627,17 +635,40 @@ const POOL = [
   { id: 'min-iv',   mode: 'minor', roman: 'iv–i–♭VII–♭VI',    name: '',                        steps: [[5, 'm'], [0, 'm'], [10, ''], [8, '']] }
 ];
 function startsOnTonic(p) { return p.steps[0][0] === 0; }
-/* Difficulty presets: which progressions, which keys, which tempo range.
-   하수: major only, the four everyday chords (I IV V vi), common keys, a steady medium tempo.
-   중수: adds ii and iii, the usual minor loops, more keys, a wider tempo range.
-   고수: everything, including borrowed chords and 7ths, in all twelve keys. */
+/* Per-progression survey: d = how hard it is to tell by ear (1 easy – 5 hard); keys (pitch classes of the tonic)
+   and bpm are where it commonly turns up. d builds the presets. keys/bpm are only offered as a suggestion in solo
+   practice: tying a quiz key or tempo to one progression would give the answer away. */
+const PROG_INFO = {
+  axis: { d: 1, keys: [0, 11, 4], bpm: [72, 150] },        fifties: { d: 1, keys: [9, 3, 11], bpm: [116, 138] },
+  turn: { d: 2, keys: [8, 2], bpm: [70, 102] },             three: { d: 1, keys: [0, 2, 9], bpm: [116, 150] },
+  mixo: { d: 3, keys: [1, 2, 7], bpm: [85, 140] },          axis2: { d: 2, keys: [9, 7, 11], bpm: [84, 130] },
+  axis4: { d: 2, keys: [0, 3], bpm: [78, 119] },            royal: { d: 3, keys: [2, 8, 3], bpm: [92, 116] },
+  circle6: { d: 3, keys: [0, 7, 5], bpm: [70, 119] },       aeol: { d: 2, keys: [4, 3, 1], bpm: [105, 128] },
+  twofive: { d: 2, keys: [0, 1], bpm: [88, 104] },          'desc-vi': { d: 2 }, 'min-plagal': { d: 2 }, 'sec-dom': { d: 3 },
+  andalus: { d: 1, keys: [8, 6, 4], bpm: [114, 125] },      'min-145': { d: 1, keys: [9, 2, 11], bpm: [95, 130] },
+  'min-6375': { d: 2, keys: [5, 11], bpm: [83, 116] },      'min-67': { d: 2, keys: [2, 3], bpm: [80, 129] },
+  'min-3': { d: 3, keys: [11, 5, 4], bpm: [79, 140] },      epic: { d: 2, keys: [4, 1, 5], bpm: [99, 150] },
+  'min-circ': { d: 3, keys: [9, 5, 4], bpm: [98, 126] },    'min-6371': { d: 3, keys: [0, 3], bpm: [90, 120] },
+  'min-iv': { d: 4, keys: [9, 2], bpm: [96, 135] }
+};
+function progDifficulty(id) { return (PROG_INFO[id] && PROG_INFO[id].d) || 3; }
+/* a common key and a middle-of-the-road tempo for a progression, or null when the survey has none */
+function typicalFor(id) {
+  const info = PROG_INFO[id];
+  if (!info || !info.keys) return null;
+  return { keyPc: info.keys[0], bpm: Math.max(70, Math.min(130, Math.round((info.bpm[0] + info.bpm[1]) / 2))) };
+}
+/* Difficulty presets: which progressions, which keys, which tempo range, and which notes compete with the tonic
+   in the key quiz (scale degrees).
+   하수: major only, progressions built from I, IV, V and vi; common keys; a steady medium tempo.
+   중수: every progression rated 1–2, major and minor; more keys; a wider tempo range.
+   고수: everything, in all twelve keys. */
 const LEVELS = {
   easy: { label: '하수', setting: 'major', ids: ['axis', 'fifties', 'three', 'axis2', 'axis4'],
-          keys: { major: [0, 7, 2, 5, 9], minor: [9, 4, 2] }, bpm: [80, 100] },
-  mid:  { label: '중수', setting: 'mixed',
-          ids: ['axis', 'fifties', 'turn', 'three', 'axis2', 'axis4', 'royal', 'circle6', 'aeol', 'andalus', 'min-145', 'min-6375', 'min-67', 'epic'],
-          keys: { major: [0, 2, 4, 5, 7, 9, 10, 3], minor: [9, 4, 2, 11, 7, 0] }, bpm: [75, 120] },
-  hard: { label: '고수', setting: 'mixed', ids: null, keys: null, bpm: [70, 140] }
+          keys: { major: [0, 7, 2, 5, 9], minor: [9, 4, 2] }, bpm: [80, 100], probe: [2, 4, 7] },
+  mid:  { label: '중수', setting: 'mixed', ids: POOL.filter((p) => progDifficulty(p.id) <= 2).map((p) => p.id),
+          keys: { major: [0, 2, 4, 5, 7, 9, 10, 3], minor: [9, 4, 2, 11, 7, 0] }, bpm: [75, 120], probe: [2, 4, 5] },
+  hard: { label: '고수', setting: 'mixed', ids: null, keys: null, bpm: [70, 140], probe: [3, 5, 6] }
 };
 function poolFor(mode, cfg) { return POOL.filter((p) => p.mode === mode && (!cfg || !cfg.ids || cfg.ids.indexOf(p.id) >= 0)); }
 function keyChoices(mode, cfg) { return keysFor(mode).filter((k) => !cfg || !cfg.keys || cfg.keys[mode].indexOf(k.pc) >= 0); }
@@ -710,20 +741,27 @@ function makeProgQuestion(setting, last, keyPc, forcedId, cfg) {
   });
   return { type: 'prog', mode: mode, key: key, prog: answer, answerId: answer.id, itemId: answer.id, options: options, chords: chordsFor(answer, key) };
 }
-/* Which key is this? The same progression is offered in four keys; two wrong keys are close neighbours. forcedKey asks for one key (review). */
+/* Where is home? The backing plays in a hidden key and four notes are offered: the tonic and three other scale
+   degrees. The listener tries each note over the backing and picks the one that sounds like home.
+   forcedKey asks for one key (review). cfg.probe names the competing degrees. */
+const DEGREE_SEMIS = { 2: [2, 2], 3: [4, 3], 4: [5, 5], 5: [7, 7], 6: [9, 8], 7: [11, 10] };
 function makeKeyQuestion(setting, last, forcedKey, cfg) {
   const mode = pickMode(setting);
   const pool = poolFor(mode, cfg);
   const prog = pickOther(pool, (p) => last && p.id === last.id);
   let key = forcedKey ? keyByName(forcedKey, mode) : null;
   if (!key) key = pickOther(keyChoices(mode, cfg), (k) => last && last.key === mode + k.id);
-  const near = shuffle([7, 5, 2, 10]).slice(0, 2);
-  const far = shuffle([1, 3, 4, 6, 8, 9, 11]).slice(0, 1);
-  const keys = shuffle([key].concat(near.concat(far).map((d) => keyObj(mode, (key.pc + d) % 12))));
-  const options = keys.map((k) => ({
-    id: k.id, label: keyLabel(k) + ' ' + modeWord(mode), sub: '으뜸음 ' + solfege(k), chords: chordsFor(prog, k)
-  }));
-  return { type: 'key', mode: mode, key: key, prog: prog, answerId: key.id, itemId: key.id, options: options, chords: chordsFor(prog, key) };
+  const chs = chordsFor(prog, key);
+  const names = key.flat ? FLAT_NAMES : SHARP_NAMES;
+  const degrees = cfg && cfg.probe ? cfg.probe : shuffle([2, 3, 4, 5, 6, 7]).slice(0, 3);
+  const options = shuffle([1].concat(degrees)).map((deg) => {
+    const pc = (key.pc + (deg === 1 ? 0 : DEGREE_SEMIS[deg][mode === 'major' ? 0 : 1])) % 12;
+    return {
+      id: FLAT_NAMES[pc], pc: pc, label: names[pc].charAt(0) + accGlyph(names[pc].charAt(1)), sub: '눌러서 들어보기',
+      degree: deg === 1 ? '으뜸음 (1도)' : deg + '도', chords: chs
+    };
+  });
+  return { type: 'key', mode: mode, key: key, prog: prog, answerId: key.id, itemId: key.id, options: options, chords: chs };
 }
 
 /* Voice leading: pick the inversion/octave of each chord that moves least from the previous one. */
@@ -1049,6 +1087,10 @@ async function buildAudio() {
   }).connect(reverb || comp);
   melody.volume.value = -12;
 
+  /* notes the listener tries over the backing in the key quiz; own output so they sound even while stopped */
+  const probe = new Tone.PolySynth(Tone.FMSynth, Object.assign({ maxPolyphony: 4 }, PIANO)).toDestination();
+  probe.volume.value = -7;
+
   const kick = new Tone.MembraneSynth({
     pitchDecay: 0.05, octaves: 6,
     envelope: { attack: 0.001, decay: 0.3, sustain: 0, release: 0.1 }
@@ -1080,7 +1122,7 @@ async function buildAudio() {
   }).connect(crashFilter);
   crash.volume.value = -26;
 
-  audio = { master: master, clickBus: clickBus, click: null, chord: chord, ref: null, bass: bass, melody: melody, kick: kick, snare: snare, snareBody: snareBody, hat: hat, crash: crash };
+  audio = { master: master, clickBus: clickBus, click: null, chord: chord, ref: null, bass: bass, melody: melody, probe: probe, kick: kick, snare: snare, snareBody: snareBody, hat: hat, crash: crash };
   renewIntro();
   return audio;
 }
@@ -1219,7 +1261,10 @@ async function start(opts) {
   audio.clickBus.gain.cancelScheduledValues(ctxNow);
   audio.clickBus.gain.setValueAtTime(1, ctxNow);
   for (let i = 0; i < beats; i++) audio.click.triggerAttackRelease(i === 0 ? 'C6' : 'G5', 0.03, t0 + i * beatSec, i === 0 ? 1 : 0.7);
-  if (beats) playbackStatus('곧 시작해요');
+  /* progression quiz: the tonic rings on the first count-in beat, so the chords can be heard against home */
+  const tonic = beats && !inPractice() && state.q && state.q.type === 'prog';
+  if (tonic) audio.ref.triggerAttackRelease(midiName(60 + state.q.key.pc), beatSec, t0, 0.8);
+  if (beats) playbackStatus(tonic ? '으뜸음을 듣고 곧 시작해요' : '곧 시작해요');
   t.start(startAt);
   if (!previewSteps) drawer().schedule(() => { if (playing && token === playToken) playbackStatus(inPractice() ? '재생 중' : '재생 중 · 4마디 반복'); }, startAt);
 }
@@ -1282,6 +1327,13 @@ function previewBeat() {
 }
 /* build the audio graph on the first touch, so the first sound doesn't wait for it */
 document.addEventListener('pointerdown', () => { if (window.Tone) Tone.start().then(initAudio).catch(() => {}); }, { once: true });
+
+/* key quiz: sound one of the offered notes over the backing */
+async function audition(i) {
+  if (!(await ready())) return;
+  const o = state.q.options[i];
+  audio.probe.triggerAttackRelease(midiName(60 + o.pc), 90 / bpm, Tone.getContext().currentTime + 0.01, 0.9);
+}
 
 /* layer on/off, kept in sync across screens */
 function setLayer(key, on) {
@@ -1501,7 +1553,7 @@ function openSetup(kind) {
   state.session = { kind: kind };
   $('#setup-title').textContent = kind === 'key' ? '키 맞추기' : '코드 진행 퀴즈';
   $('#setup-lead').textContent = kind === 'key'
-    ? '배킹을 듣고 어떤 키인지 4개 중에서 고르세요.'
+    ? '배킹이 도는 동안 보기의 음을 눌러 들어보고, 가장 집처럼 들리는 으뜸음을 고르세요.'
     : '배킹을 듣고 어떤 코드 진행인지 4개 보기 중에서 맞춰보세요.';
   $('#key-field').hidden = kind === 'key';
   renderLevel();
@@ -1595,8 +1647,14 @@ async function nextQuestion() {
   renderChart();
   $('#chart').classList.add('masked');
   renderOptions();
+  const isKey = q.type === 'key';
+  state.sel = -1;
   $('#quiz').classList.remove('answered');
-  $('#switch-hint').hidden = true;
+  $('#quiz').classList.toggle('picking', isKey);
+  $('#confirm').hidden = !isKey;
+  $('#confirm').disabled = true;
+  $('#switch-hint').hidden = !isKey;
+  $('#switch-hint').textContent = '보기를 눌러 음을 얹어 들어보고, 가장 집처럼 들리는 음을 고르세요.';
   state.nowIdx = -1;
   $('#next').hidden = true;
   setStatus('');
@@ -1607,10 +1665,14 @@ function answer(i) {
   if (state.phase !== 'asking') return;
   state.phase = 'answered';
   const q = state.q;
+  const isKey = q.type === 'key';
   const ok = q.options[i].id === q.answerId;
   state.asked += 1;
   if (ok) { state.right += 1; state.streak += 1; } else { state.streak = 0; }
-  const doneQuests = recordAnswer(Store.data, today(), { type: q.type, id: state.session.kind === 'review' && state.session.item ? state.session.item.id : q.itemId, mode: q.mode, ok: ok, review: state.session.kind === 'review' });
+  const inReview = state.session.kind === 'review';
+  const doneQuests = recordAnswer(Store.data, today(), {
+    type: q.type, id: inReview && state.session.item ? state.session.item.id : q.itemId, mode: q.mode, ok: ok, review: inReview
+  });
   Store.save();
 
   const btns = $('#opts').children;
@@ -1618,6 +1680,8 @@ function answer(i) {
   q.options.forEach((o, j) => {
     const b = btns[j];
     const tag = b.querySelector('.tag');
+    b.classList.remove('sel');
+    if (isKey) b.querySelector('.rm').textContent = o.degree;
     if (o.id === q.answerId) { b.classList.add('correct'); tag.textContent = '정답'; correctLetter = 'ABCD'.charAt(j); }
     else if (j === i) { b.classList.add('wrong'); tag.textContent = '내 선택'; }
     else { b.classList.add('dim'); }
@@ -1626,20 +1690,32 @@ function answer(i) {
   const keyText = keyLabel(q.key) + ' ' + modeWord(q.mode);
   $('#key').textContent = keyText;
 
-  const detail = q.type === 'key'
-    ? keyText + ' · ' + q.prog.roman
+  const detail = isKey
+    ? '으뜸음 ' + keyLabel(q.key) + ' · ' + keyText + ' · ' + q.prog.roman
     : q.prog.roman + (q.prog.name ? ' · ' + q.prog.name : '');
   let msg = ok ? '정답입니다 · ' + detail : '아쉬워요 · 정답은 ' + correctLetter + ' (' + detail + ')';
   if (doneQuests.length) msg += ' · 퀘스트 완료: ' + doneQuests.join(', ');
   setStatus(msg, ok ? 'ok' : 'bad');
+  $('#quiz').classList.remove('picking');
   $('#quiz').classList.add('answered');
-  const reviewDone = state.session.kind === 'review' && !dueReviews(Store.data, today()).length;
+  $('#confirm').hidden = true;
+  const reviewDone = inReview && !dueReviews(Store.data, today()).length;
   $('#next').textContent = reviewDone ? '복습 끝내기' : '다음 문제';
   $('#next').hidden = false;
+  $('#switch-hint').textContent = isKey
+    ? '보기를 누르면 그 음을 다시 들어볼 수 있어요.'
+    : '다른 보기를 누르면 바로 바꿔 들을 수 있고, 코드 칸을 누르면 그 마디부터 재생돼요.';
   $('#switch-hint').hidden = false;
-  state.nowIdx = q.options.findIndex((o) => o.id === q.answerId);
-  markNow();
+  state.nowIdx = isKey ? -1 : q.options.findIndex((o) => o.id === q.answerId);
+  if (!isKey) markNow();
   updateScore();
+}
+/* key quiz: tapping a note plays it and marks it as the current pick; the answer is given with the button */
+function pick(i) {
+  state.sel = i;
+  Array.from($('#opts').children).forEach((b, j) => b.classList.toggle('sel', j === i));
+  $('#confirm').disabled = false;
+  audition(i);
 }
 function markNow() {
   const btns = $('#opts').children;
@@ -1754,12 +1830,14 @@ $('#start').addEventListener('click', () => startSession(state.session.kind));
 $('#quit').addEventListener('click', showHome);
 $('#p-quit').addEventListener('click', showHome);
 $('#next').addEventListener('click', () => { nextQuestion(); });
+$('#confirm').addEventListener('click', () => { if (state.sel >= 0) answer(state.sel); });
 $('#opts').addEventListener('click', (e) => {
   const b = e.target.closest('button.opt');
   if (!b) return;
   const i = Number(b.dataset.i);
-  if (state.phase === 'asking') answer(i);
-  else if (state.phase === 'answered') switchTo(i);
+  const isKey = state.q && state.q.type === 'key';
+  if (state.phase === 'asking') { if (isKey) pick(i); else answer(i); }
+  else if (state.phase === 'answered') { if (isKey) audition(i); else switchTo(i); }
 });
 $('#play').addEventListener('click', () => { if (playing) stop(); else start(); });
 $('#p-play').addEventListener('click', () => { if (playing) stop(); else start(); });
@@ -1822,7 +1900,7 @@ buildKeyGrid($('#keygrid'), true, (v) => {
   if (state.keyPc !== null) previewTonic(state.keyPc);
 });
 markKeyGrid($('#keygrid'), 'random');
-buildKeyGrid($('#p-keygrid'), false, (v) => { practice.keyPc = Number(v); applyPractice(true); });
+buildKeyGrid($('#p-keygrid'), false, (v) => { practice.keyPc = Number(v); renderPracticeHead(); applyPractice(true); });
 markKeyGrid($('#p-keygrid'), String(practice.keyPc));
 
 /* solo practice: progression picker (a full-screen list instead of a dropdown) */
@@ -1830,7 +1908,27 @@ function renderPracticeHead() {
   const p = practiceProg();
   $('#p-prog-roman').textContent = p.roman;
   $('#p-prog-name').textContent = (p.name ? p.name + ' · ' : '') + modeWord(p.mode);
+  const typ = typicalFor(p.id);
+  const sg = $('#p-suggest');
+  sg.hidden = !typ || (typ.keyPc === practice.keyPc && typ.bpm === practice.bpm);
+  if (typ) sg.textContent = '이 진행에 흔한 설정: ' + keyLabel(keyObj(p.mode, typ.keyPc)) + (p.mode === 'minor' ? 'm' : '') + ' · ' + typ.bpm + ' BPM';
 }
+function setPracticeBpm(v) {
+  practice.bpm = v;
+  bpm = v;
+  $('#p-bpm').value = String(v);
+  $('#p-bpm-out').textContent = v + ' BPM';
+  if (window.Tone && playing) transport().bpm.value = v;
+}
+$('#p-suggest').addEventListener('click', () => {
+  const typ = typicalFor(practice.progId);
+  if (!typ) return;
+  practice.keyPc = typ.keyPc;
+  markKeyGrid($('#p-keygrid'), String(typ.keyPc));
+  setPracticeBpm(typ.bpm);
+  renderPracticeHead();
+  applyPractice(true);
+});
 function openSheet() {
   const list = $('#sheet-list');
   list.textContent = '';
@@ -1842,7 +1940,7 @@ function openSheet() {
       b.type = 'button'; b.className = 'prow'; b.dataset.id = p.id;
       if (p.id === practice.progId) b.setAttribute('aria-current', 'true');
       const r = document.createElement('span'); r.className = 'r'; r.textContent = p.roman;
-      const n = document.createElement('span'); n.className = 'n'; n.textContent = p.name || modeWord(mode) + ' 진행';
+      const n = document.createElement('span'); n.className = 'n'; n.textContent = (p.name || modeWord(mode) + ' 진행') + ' · 난이도 ' + progDifficulty(p.id);
       const c = document.createElement('span'); c.className = 'c'; c.textContent = chordText(chordsFor(p, key));
       b.append(r, n, c);
       list.appendChild(b);
@@ -1863,12 +1961,7 @@ $('#sheet-list').addEventListener('click', (e) => {
   applyPractice(true);
 });
 renderPracticeHead();
-$('#p-bpm').addEventListener('input', (e) => {
-  practice.bpm = Number(e.target.value);
-  bpm = practice.bpm;
-  $('#p-bpm-out').textContent = bpm + ' BPM';
-  if (window.Tone && playing) transport().bpm.value = bpm;
-});
+$('#p-bpm').addEventListener('input', (e) => { setPracticeBpm(Number(e.target.value)); renderPracticeHead(); });
 $('#p-timer').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-t]');
   if (!b) return;
