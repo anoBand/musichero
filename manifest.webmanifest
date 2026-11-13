@@ -1,17 +1,22 @@
 {
+  "id": "/musichero/",
   "name": "Music Hero",
   "short_name": "Music Hero",
   "description": "배킹을 듣고 코드 진행과 키를 맞히는 귀 훈련 앱",
-  "lang": "ko",
-  "start_url": "./",
-  "scope": "./",
+  "start_url": "/musichero/",
+  "scope": "/musichero/",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#0D1518",
   "theme_color": "#0D1518",
   "icons": [
-    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/musichero/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/musichero/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/musichero/icons/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/musichero/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "/musichero/screenshots/home.png", "sizes": "720x1280", "type": "image/png", "label": "홈" },
+    { "src": "/musichero/screenshots/quiz.png", "sizes": "720x1280", "type": "image/png", "label": "코드 진행 퀴즈" },
+    { "src": "/musichero/screenshots/wide.png", "sizes": "1280x720", "type": "image/png", "form_factor": "wide", "label": "홈" }
   ]
 }
