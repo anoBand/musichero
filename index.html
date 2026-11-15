@@ -272,6 +272,22 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .opt.dim { opacity: 0.6; }
 .opt.now { opacity: 1; }
 .opt.now .ltr { color: var(--accent); }
+.opts.pal { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.pal-btn {
+  display: grid; gap: 1px; justify-items: center; align-content: center; min-height: 50px; padding: 4px 2px; cursor: pointer;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; font: inherit;
+}
+.pal-btn:active { background: var(--accent-soft); }
+.pal-btn .c { font: 700 1rem/1.2 var(--font-body); white-space: nowrap; }
+.pal-btn .r { font: 400 0.68rem/1.2 var(--font-data); color: var(--muted); }
+.opts.notes { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.opts.notes .opt { grid-template-columns: minmax(0, 1fr); justify-items: center; align-content: center; min-height: 50px; padding: 4px 2px; border-left-width: 1px; gap: 0; }
+.opts.notes .opt .ltr, .opts.notes .opt .tag { display: none; }
+.opts.notes .opt .chs { font: 600 1rem/1.2 var(--font-body); justify-content: center; }
+.opts.notes .opt .rm { font-size: 0.62rem; text-align: center; min-height: 1.2em; }
+.chart.filling .qm { font: 700 1.05rem/1.4 var(--font-body); color: var(--ink); white-space: nowrap; }
+.chart.filling .bar.slot { outline: 2px solid var(--accent); outline-offset: 1px; }
+.chart .bar.miss { border-color: var(--danger); border-left-color: var(--danger); }
 .hint { margin: 0; font: 400 0.75rem/1.3 var(--font-body); color: var(--muted); }
 
 .status { margin: 0; min-height: 2.6em; display: flex; align-items: center; font: 400 0.82rem/1.3 var(--font-body); color: var(--muted); }
@@ -457,6 +473,15 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
           <button class="chip" type="button" data-v="custom" aria-pressed="false">상세 설정</button>
         </div>
         <p class="note" id="level-note"></p>
+      </div>
+
+      <div class="field">
+        <span class="lbl">답안 방식</span>
+        <div class="chips" id="amode">
+          <button class="chip" type="button" data-a="choice" aria-pressed="true">객관식</button>
+          <button class="chip" type="button" data-a="free" aria-pressed="false">주관식</button>
+        </div>
+        <p class="note" id="amode-note"></p>
       </div>
 
       <div class="custom" id="custom-fields" hidden>
@@ -691,6 +716,31 @@ const LEVELS = {
           keys: { major: [0, 2, 4, 5, 7, 9, 10, 3], minor: [9, 4, 2, 11, 7, 0] }, bpm: [75, 120], probe: [2, 4, 5], xp: 15 },
   hard: { label: '고수', setting: 'mixed', ids: null, keys: null, bpm: [70, 140], probe: [3, 5, 6], xp: 20 }
 };
+/* Roman numeral of a chord given as [semitones above the tonic, quality]: lower case for minor chords. */
+const ROMAN = ['I', '♭II', 'II', '♭III', 'III', 'IV', '♯IV', 'V', '♭VI', 'VI', '♭VII', 'VII'];
+function romanOf(step) {
+  const q = step[1];
+  const minor = q.charAt(0) === 'm' && q.indexOf('maj') !== 0;
+  const base = minor ? ROMAN[step[0]].toLowerCase() : ROMAN[step[0]];
+  return base + (minor ? q.slice(1) : q);
+}
+/* Written answers: every distinct chord used by the progressions that can come up, in this key, ordered by degree. */
+function paletteFor(q, cfg) {
+  const seen = {};
+  const steps = [];
+  poolFor(q.mode, cfg).forEach((p) => p.steps.forEach((st) => {
+    const k = st[0] + '|' + st[1];
+    if (!seen[k]) { seen[k] = true; steps.push(st); }
+  }));
+  steps.sort((a, b) => a[0] - b[0] || (a[1] < b[1] ? -1 : 1));
+  return steps.map((st) => {
+    const token = rootName(q.key, q.mode, st[0]) + st[1];
+    const c = parseChord(token);
+    return { step: st, token: token, label: c.root + c.quality, roman: romanOf(st) };
+  });
+}
+function sameSteps(a, b) { return a.length === b.length && a.every((st, i) => st[0] === b[i][0] && st[1] === b[i][1]); }
+const DEGREE_SHORT = ['1도', '♭2도', '2도', '♭3도', '3도', '4도', '♭5도', '5도', '♭6도', '6도', '♭7도', '7도'];
 function poolFor(mode, cfg) { return POOL.filter((p) => p.mode === mode && (!cfg || !cfg.ids || cfg.ids.indexOf(p.id) >= 0)); }
 function keyChoices(mode, cfg) { return keysFor(mode).filter((k) => !cfg || !cfg.keys || cfg.keys[mode].indexOf(k.pc) >= 0); }
 function randomIn(range) { return range[0] + Math.floor(Math.random() * (range[1] - range[0] + 1)); }
@@ -717,9 +767,14 @@ function keyLabel(k) { return k.name.charAt(0) + (k.name.length > 1 ? accGlyph(k
 function solfege(k) { return SOLFEGE[k.name.charAt(0)] + (k.name.length > 1 ? accGlyph(k.name.charAt(1)) : ''); }
 function modeWord(mode) { return mode === 'major' ? '메이저' : '마이너'; }
 function randomBpm() { return BPM_MIN + Math.floor(Math.random() * (BPM_MAX - BPM_MIN + 1)); }
+/* Root name for a chord degree. Borrowed degrees (♭II, ♭III, ♭VI, ♭VII) in a major key are written with flats
+   whatever the key: C major's ♭VII is B♭, not A♯. */
+function rootName(key, mode, step) {
+  const borrowed = mode === 'major' && [1, 3, 8, 10].indexOf(step) >= 0;
+  return (key.flat || borrowed ? FLAT_NAMES : SHARP_NAMES)[(key.pc + step) % 12];
+}
 function chordsFor(prog, key) {
-  const names = key.flat ? FLAT_NAMES : SHARP_NAMES;
-  return prog.steps.map((s) => parseChord(names[(key.pc + s[0]) % 12] + s[1]));
+  return prog.steps.map((s) => parseChord(rootName(key, prog.mode, s[0]) + s[1]));
 }
 function chordText(chs) { return chs.map((c) => c.root + c.quality).join(' '); }
 function shuffle(a) {
@@ -766,7 +821,7 @@ function makeProgQuestion(setting, last, keyPc, forcedId, cfg) {
    degrees. The listener tries each note over the backing and picks the one that sounds like home.
    forcedKey asks for one key (review). cfg.probe names the competing degrees. */
 const DEGREE_SEMIS = { 2: [2, 2], 3: [4, 3], 4: [5, 5], 5: [7, 7], 6: [9, 8], 7: [11, 10] };
-function makeKeyQuestion(setting, last, forcedKey, cfg) {
+function makeKeyQuestion(setting, last, forcedKey, cfg, free) {
   const mode = pickMode(setting);
   const pool = poolFor(mode, cfg);
   const prog = pickOther(pool, (p) => last && p.id === last.id);
@@ -782,7 +837,12 @@ function makeKeyQuestion(setting, last, forcedKey, cfg) {
       degree: deg === 1 ? '으뜸음 (1도)' : deg + '도', chords: chs
     };
   });
-  return { type: 'key', mode: mode, key: key, prog: prog, answerId: key.id, itemId: key.id, options: options, chords: chs };
+  /* written answer: all twelve notes instead of four candidates */
+  const all = FLAT_NAMES.map((id, pc) => ({
+    id: id, pc: pc, label: names[pc].charAt(0) + accGlyph(names[pc].charAt(1)), sub: '',
+    degree: DEGREE_SHORT[(pc - key.pc + 12) % 12], chords: chs
+  }));
+  return { type: 'key', mode: mode, key: key, prog: prog, answerId: key.id, itemId: key.id, options: free ? all : options, free: !!free, chords: chs };
 }
 
 /* Voice leading: pick the inversion/octave of each chord that moves least from the previous one. */
@@ -1020,7 +1080,7 @@ let beatTimer = null;
 const layers = { chord: true, bass: true, melody: true, drums: true };
 const state = {
   view: 'home', session: { kind: 'prog' }, phase: 'idle',
-  kit: 'piano', level: 'easy', setting: 'major', keyPc: null, bpmMode: 'random',
+  kit: 'piano', amode: 'choice', level: 'easy', setting: 'major', keyPc: null, bpmMode: 'random',
   q: null, asked: 0, right: 0, streak: 0, last: null, nowIdx: -1
 };
 if (LEVELS[Store.data.pref.level] || Store.data.pref.level === 'custom') state.level = Store.data.pref.level;
@@ -1683,6 +1743,7 @@ function openSetup(kind) {
     : '배킹을 듣고 어떤 코드 진행인지 4개 보기 중에서 맞춰보세요.';
   $('#key-field').hidden = kind === 'key';
   renderLevel();
+  renderAmode();
   show('setup');
 }
 /* 5. difficulty: a preset fixes range, keys and tempo; 상세 설정 opens the individual controls */
@@ -1731,9 +1792,63 @@ function updateScore() {
     el.appendChild(span);
   });
 }
+/* written progression answer: the chords to choose from */
+function renderPalette() {
+  const el = $('#opts');
+  el.textContent = '';
+  el.className = 'opts pal';
+  state.q.palette.forEach((pc, i) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'pal-btn'; b.dataset.p = String(i);
+    const c = document.createElement('span'); c.className = 'c'; c.textContent = pc.label;
+    const r = document.createElement('span'); r.className = 'r'; r.textContent = pc.roman;
+    b.append(c, r);
+    el.appendChild(b);
+  });
+}
+/* the masked chart doubles as the answer sheet: each bar shows the chord picked for it */
+function renderSlots() {
+  const bars = $('#chart').children;
+  for (let i = 0; i < bars.length; i++) {
+    const pick = state.mine[i];
+    bars[i].querySelector('.qm').textContent = pick === null ? '?' : state.q.palette[pick].label;
+    bars[i].classList.toggle('slot', i === state.slot);
+  }
+  $('#confirm').disabled = state.mine.some((x) => x === null);
+}
+function choose(pi) {
+  if (state.phase !== 'asking') return;
+  state.mine[state.slot] = pi;
+  const empty = state.mine.indexOf(null);
+  if (empty >= 0) state.slot = empty;
+  else if (state.slot < state.mine.length - 1) state.slot += 1;
+  renderSlots();
+}
+/* grade a written progression: every bar must match. The answer and (if wrong) the entered progression become
+   two rows that can be switched between by ear, like the options of a multiple-choice question. */
+function submitWritten() {
+  const q = state.q;
+  if (state.phase !== 'asking' || state.mine.some((x) => x === null)) return;
+  const picks = state.mine.map((i) => q.palette[i]);
+  const ok = sameSteps(picks.map((x) => x.step), q.prog.steps);
+  q.options = [{ id: q.answerId, label: chordText(q.chords), sub: q.prog.roman, chords: q.chords }];
+  if (!ok) {
+    const mine = picks.map((x) => parseChord(x.token));
+    q.options.push({ id: '(mine)', label: chordText(mine), sub: picks.map((x) => x.roman).join('–'), chords: mine });
+  }
+  const bars = $('#chart').children;
+  picks.forEach((x, i) => {
+    bars[i].classList.remove('slot');
+    bars[i].classList.toggle('miss', !(x.step[0] === q.prog.steps[i][0] && x.step[1] === q.prog.steps[i][1]));
+  });
+  $('#chart').classList.remove('filling');
+  renderOptions();
+  answer(ok ? 0 : 1);
+}
 function renderOptions() {
   const el = $('#opts');
   el.textContent = '';
+  el.className = 'opts' + (state.q.type === 'key' && state.q.free ? ' notes' : '');
   state.q.options.forEach((o, i) => {
     const b = document.createElement('button');
     b.type = 'button';
@@ -1755,6 +1870,7 @@ function renderOptions() {
 async function nextQuestion() {
   if (playing) stop();
   const s = state.session;
+  const free = state.amode === 'free' && s.kind !== 'review';
   let q;
   if (s.kind === 'review') {
     const due = dueReviews(Store.data, today());
@@ -1766,8 +1882,9 @@ async function nextQuestion() {
     const lv = LEVELS[state.level] || null;
     const setting = lv ? lv.setting : state.setting;
     q = s.kind === 'key'
-      ? makeKeyQuestion(setting, state.last, null, lv)
+      ? makeKeyQuestion(setting, state.last, null, lv, free)
       : makeProgQuestion(setting, state.last, lv ? null : state.keyPc, null, lv);
+    if (free && q.type === 'prog') { q.free = true; q.palette = paletteFor(q, lv); }
   }
   state.q = q;
   state.phase = 'asking';
@@ -1780,15 +1897,22 @@ async function nextQuestion() {
   $('#bpmv').textContent = bpm + ' BPM';
   renderChart();
   $('#chart').classList.add('masked');
-  renderOptions();
   const isKey = q.type === 'key';
+  const writing = q.type === 'prog' && !!q.free;
   state.sel = -1;
+  state.mine = chords.map(() => null);
+  state.slot = 0;
+  $('#chart').classList.toggle('filling', writing);
+  if (writing) { renderPalette(); renderSlots(); } else renderOptions();
   $('#quiz').classList.remove('answered');
-  $('#quiz').classList.toggle('picking', isKey);
-  $('#confirm').hidden = !isKey;
+  $('#quiz').classList.toggle('picking', isKey || writing);
+  $('#confirm').hidden = !(isKey || writing);
   $('#confirm').disabled = true;
-  $('#switch-hint').hidden = !isKey;
-  $('#switch-hint').textContent = '보기를 눌러 음을 얹어 들어보고, 가장 집처럼 들리는 음을 고르세요.';
+  $('#confirm').textContent = writing ? '이 진행으로 답하기' : '이 음으로 답하기';
+  $('#switch-hint').hidden = !(isKey || writing);
+  $('#switch-hint').textContent = writing
+    ? '마디를 누르면 그 마디부터 들려요. 아래에서 코드를 골라 네 마디를 채우세요.'
+    : (q.free ? '음을 눌러 얹어 들어보고, 12음 중에서 으뜸음을 고르세요.' : '보기를 눌러 음을 얹어 들어보고, 가장 집처럼 들리는 음을 고르세요.');
   state.nowIdx = -1;
   $('#next').hidden = true;
   setStatus('');
@@ -1805,7 +1929,9 @@ function answer(i) {
   if (ok) { state.right += 1; state.streak += 1; } else { state.streak = 0; }
   const inReview = state.session.kind === 'review';
   /* a right answer earns more on harder presets: 하수 10, 중수 15, 고수 20 (상세 설정 and review: 10) */
-  const gain = !inReview && LEVELS[state.level] ? LEVELS[state.level].xp : XP_RIGHT;
+  const baseGain = !inReview && LEVELS[state.level] ? LEVELS[state.level].xp : XP_RIGHT;
+  /* written answers earn half as much again, rounded to 5 */
+  const gain = q.free ? Math.round(baseGain * 1.5 / 5) * 5 : baseGain;
   const levelBefore = levelInfo(Store.data.xp).level;
   const doneQuests = recordAnswer(Store.data, today(), {
     type: q.type, id: inReview && state.session.item ? state.session.item.id : q.itemId, mode: q.mode, ok: ok, review: inReview, xp: gain
@@ -1819,7 +1945,7 @@ function answer(i) {
     const tag = b.querySelector('.tag');
     b.classList.remove('sel');
     if (isKey) b.querySelector('.rm').textContent = o.degree;
-    if (o.id === q.answerId) { b.classList.add('correct'); if (ok) b.classList.add('fx-pop'); tag.textContent = '정답'; correctLetter = 'ABCD'.charAt(j); }
+    if (o.id === q.answerId) { b.classList.add('correct'); if (ok) b.classList.add('fx-pop'); tag.textContent = '정답'; correctLetter = q.free ? o.label : 'ABCD'.charAt(j); }
     else if (j === i) { b.classList.add('wrong', 'fx-shake'); tag.textContent = '내 선택'; }
     else { b.classList.add('dim'); }
   });
@@ -1839,8 +1965,6 @@ function answer(i) {
     for (let l = levelBefore + 1; l <= levelAfter; l++) unlockedAt(l).forEach((x) => opened.push(x));
     if (opened.length) msg += ' (' + opened.join(', ') + ' 해금)';
   }
-  /* a short buzz for a right answer, a double buzz for a wrong one (Android; iOS has no vibration API) */
-  try { if (navigator.vibrate) navigator.vibrate(ok ? 70 : [90, 70, 90]); } catch (e) {}
   setStatus(msg, ok ? 'ok' : 'bad');
   $('#quiz').classList.remove('picking');
   $('#quiz').classList.add('answered');
@@ -1976,7 +2100,29 @@ $('#start').addEventListener('click', () => startSession(state.session.kind));
 $('#quit').addEventListener('click', showHome);
 $('#p-quit').addEventListener('click', showHome);
 $('#next').addEventListener('click', () => { nextQuestion(); });
-$('#confirm').addEventListener('click', () => { if (state.sel >= 0) answer(state.sel); });
+$('#confirm').addEventListener('click', () => {
+  if (state.q && state.q.type === 'prog' && state.q.free) submitWritten();
+  else if (state.sel >= 0) answer(state.sel);
+});
+$('#opts').addEventListener('click', (e) => {
+  const b = e.target.closest('button.pal-btn');
+  if (b) choose(Number(b.dataset.p));
+});
+function renderAmode() {
+  $$('#amode button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.a === state.amode)));
+  $('#amode-note').textContent = state.amode === 'free'
+    ? (state.session.kind === 'key' ? '12음 중에서 으뜸음을 직접 골라요. 경험치 1.5배.' : '마디마다 코드를 직접 골라 네 마디를 채워요. 경험치 1.5배.')
+    : '보기 4개 중에서 골라요.';
+}
+$('#amode').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-a]');
+  if (!b) return;
+  state.amode = b.dataset.a;
+  Store.data.pref.amode = state.amode;
+  Store.save();
+  renderAmode();
+});
+if (Store.data.pref.amode === 'free') state.amode = 'free';
 /* Notes in the key quiz sound on touch-down, not on release (a click arrives only when the finger lifts).
    The click that follows is ignored; a click with no touch-down before it (keyboard) still works. */
 let downHandled = false;
@@ -2131,7 +2277,11 @@ $('#p-timer').addEventListener('click', (e) => {
 ['#chart', '#p-chart'].forEach((sel) => {
   $(sel).addEventListener('pointerdown', (e) => {
     const bar = e.target.closest('.bar');
-    if (bar) jumpTo(Array.prototype.indexOf.call(bar.parentNode.children, bar));
+    if (!bar) return;
+    const idx = Array.prototype.indexOf.call(bar.parentNode.children, bar);
+    /* written answer: the tapped bar is also the one the next chord goes into */
+    if (sel === '#chart' && state.q && state.q.free && state.q.type === 'prog' && state.phase === 'asking') { state.slot = idx; renderSlots(); }
+    jumpTo(idx);
   });
 });
 
