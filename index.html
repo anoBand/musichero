@@ -190,6 +190,7 @@ h2 { margin: 0; font: 500 0.75rem/1 var(--font-data); letter-spacing: 0.06em; te
   font: 500 0.85rem/1 var(--font-body);
 }
 .chip[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.chip:disabled { opacity: 0.5; cursor: default; }
 select {
   width: 100%; min-height: 46px; padding: 0 12px; box-sizing: border-box;
   background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
@@ -333,7 +334,11 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 }
 
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .bar { transition: none; } }
+@keyframes fx-pop { 0% { transform: scale(1); } 40% { transform: scale(1.035); } 100% { transform: scale(1); } }
+@keyframes fx-shake { 0%, 100% { transform: translateX(0); } 20% { transform: translateX(-7px); } 40% { transform: translateX(6px); } 60% { transform: translateX(-4px); } 80% { transform: translateX(2px); } }
+.opt.fx-pop { animation: fx-pop 0.32s ease-out; }
+.opt.fx-shake { animation: fx-shake 0.36s ease-out; }
+@media (prefers-reduced-motion: reduce) { .bar { transition: none; } .opt.fx-pop, .opt.fx-shake { animation: none; } }
 </style>
 </head>
 <body>
@@ -855,7 +860,23 @@ function assign(from, targets) {
 
 /* ---- progress: plain data in, plain data out, so the storage behind it can change later ---- */
 const GOAL_Q = 5, GOAL_PRACTICE = 600;
-const XP_RIGHT = 10, XP_WRONG = 2, XP_PER_MIN = 5, XP_PER_LEVEL = 100;
+const XP_RIGHT = 10, XP_WRONG = 2, XP_PER_MIN = 5;
+/* Each level needs 50 XP more than the one before: 100, 150, 200, ... */
+function levelInfo(xp) {
+  let level = 1, need = 100, into = xp;
+  while (into >= need) { into -= need; level++; need += 50; }
+  return { level: level, into: into, need: need };
+}
+const TITLES = [[1, '입문자'], [3, '연습생'], [5, '세션맨'], [8, '밴드마스터'], [12, '뮤직 히어로']];
+function titleFor(level) {
+  let t = TITLES[0][1];
+  TITLES.forEach((x) => { if (level >= x[0]) t = x[1]; });
+  return t;
+}
+/* difficulty unlocks: the level at which each setup choice opens */
+const UNLOCK = { easy: 1, mid: 3, custom: 3, hard: 5 };
+const UNLOCK_LABEL = { mid: '중수', custom: '상세 설정', hard: '고수' };
+function unlockedAt(level) { return Object.keys(UNLOCK_LABEL).filter((k) => UNLOCK[k] === level).map((k) => UNLOCK_LABEL[k]); }
 function pad2(n) { return (n < 10 ? '0' : '') + n; }
 function dayKey(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
 function keyToDate(k) { const p = k.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
@@ -1540,9 +1561,10 @@ function renderHome() {
   $('#goal-title').textContent = met ? '오늘 목표를 달성했어요' : '오늘 목표: 5문제 또는 연습 10분';
   $('#goal-bar').style.width = Math.round(goalRatio(day) * 100) + '%';
   $('#goal-detail').textContent = '문제 ' + Math.min(day.q, GOAL_Q) + '/' + GOAL_Q + ' · 연습 ' + Math.min(Math.floor(day.practice / 60), GOAL_PRACTICE / 60) + '/' + (GOAL_PRACTICE / 60) + '분';
-  $('#level-n').textContent = '레벨 ' + (Math.floor(data.xp / XP_PER_LEVEL) + 1);
-  $('#level-bar').style.width = (data.xp % XP_PER_LEVEL) + '%';
-  $('#level-xp').textContent = (data.xp % XP_PER_LEVEL) + '/' + XP_PER_LEVEL + ' XP';
+  const li = levelInfo(data.xp);
+  $('#level-n').textContent = '레벨 ' + li.level + ' · ' + titleFor(li.level);
+  $('#level-bar').style.width = Math.round(li.into / li.need * 100) + '%';
+  $('#level-xp').textContent = li.into + '/' + li.need + ' XP';
 
   const due = dueReviews(data, k).length;
   const later = data.review.length - due;
@@ -1614,7 +1636,7 @@ function renderRecords() {
     ['정답률', tot.q ? Math.round(tot.right / tot.q * 100) + '%' : '-'],
     ['연습 시간', fmtDuration(tot.practice)],
     ['연습한 날', active + '일'],
-    ['레벨', String(Math.floor(data.xp / XP_PER_LEVEL) + 1)],
+    ['레벨', levelInfo(data.xp).level + ' · ' + titleFor(levelInfo(data.xp).level)],
     ['누적 XP', String(data.xp)]
   ].forEach((r) => {
     const div = document.createElement('div');
@@ -1665,7 +1687,15 @@ function openSetup(kind) {
 }
 /* 5. difficulty: a preset fixes range, keys and tempo; 상세 설정 opens the individual controls */
 function renderLevel() {
-  $$('#levels button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.v === state.level)));
+  const myLevel = levelInfo(Store.data.xp).level;
+  if (UNLOCK[state.level] > myLevel) state.level = 'easy';
+  const names = { easy: '하수', mid: '중수', hard: '고수', custom: '상세 설정' };
+  $$('#levels button').forEach((b) => {
+    const locked = UNLOCK[b.dataset.v] > myLevel;
+    b.disabled = locked;
+    b.textContent = names[b.dataset.v] + (locked ? ' · Lv ' + UNLOCK[b.dataset.v] : '');
+    b.setAttribute('aria-pressed', String(b.dataset.v === state.level));
+  });
   const lv = LEVELS[state.level];
   $('#custom-fields').hidden = !!lv;
   const note = $('#level-note');
@@ -1774,6 +1804,7 @@ function answer(i) {
   state.asked += 1;
   if (ok) { state.right += 1; state.streak += 1; } else { state.streak = 0; }
   const inReview = state.session.kind === 'review';
+  const levelBefore = levelInfo(Store.data.xp).level;
   const doneQuests = recordAnswer(Store.data, today(), {
     type: q.type, id: inReview && state.session.item ? state.session.item.id : q.itemId, mode: q.mode, ok: ok, review: inReview
   });
@@ -1786,8 +1817,8 @@ function answer(i) {
     const tag = b.querySelector('.tag');
     b.classList.remove('sel');
     if (isKey) b.querySelector('.rm').textContent = o.degree;
-    if (o.id === q.answerId) { b.classList.add('correct'); tag.textContent = '정답'; correctLetter = 'ABCD'.charAt(j); }
-    else if (j === i) { b.classList.add('wrong'); tag.textContent = '내 선택'; }
+    if (o.id === q.answerId) { b.classList.add('correct'); if (ok) b.classList.add('fx-pop'); tag.textContent = '정답'; correctLetter = 'ABCD'.charAt(j); }
+    else if (j === i) { b.classList.add('wrong', 'fx-shake'); tag.textContent = '내 선택'; }
     else { b.classList.add('dim'); }
   });
   $('#chart').classList.remove('masked');
@@ -1799,6 +1830,15 @@ function answer(i) {
     : q.prog.roman + (q.prog.name ? ' · ' + q.prog.name : '');
   let msg = ok ? '정답입니다 · ' + detail : '아쉬워요 · 정답은 ' + correctLetter + ' (' + detail + ')';
   if (doneQuests.length) msg += ' · 퀘스트 완료: ' + doneQuests.join(', ');
+  const levelAfter = levelInfo(Store.data.xp).level;
+  if (levelAfter > levelBefore) {
+    msg += ' · 레벨 ' + levelAfter + ' 달성';
+    const opened = [];
+    for (let l = levelBefore + 1; l <= levelAfter; l++) unlockedAt(l).forEach((x) => opened.push(x));
+    if (opened.length) msg += ' (' + opened.join(', ') + ' 해금)';
+  }
+  /* a short buzz for a right answer, a double buzz for a wrong one (Android; iOS has no vibration API) */
+  try { if (navigator.vibrate) navigator.vibrate(ok ? 30 : [45, 70, 45]); } catch (e) {}
   setStatus(msg, ok ? 'ok' : 'bad');
   $('#quiz').classList.remove('picking');
   $('#quiz').classList.add('answered');
