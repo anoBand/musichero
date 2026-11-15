@@ -116,8 +116,6 @@ h2 { margin: 0; font: 500 0.75rem/1 var(--font-data); letter-spacing: 0.06em; te
 .seg button + button { border-left: 1px solid var(--line); }
 .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); }
 .custom { display: grid; gap: 22px; }
-.seg.wide { display: flex; }
-.seg.wide button { flex: 1; font-size: 0.85rem; font-weight: 500; }
 .credit { margin: 0; font: 400 0.68rem/1.3 var(--font-data); color: var(--muted); text-align: center; }
 .suggest { justify-self: start; min-height: 34px; font-size: 0.8rem; }
 
@@ -432,18 +430,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
       <div class="section">
         <h2>진행별 정답률</h2>
         <ul class="acc-list" id="acc-list"></ul>
-      </div>
-    </div>
-    <div class="panel">
-      <div class="section">
-        <h2>오디오 버퍼 (시험용)</h2>
-        <div class="seg wide" id="lat" role="group" aria-label="오디오 버퍼">
-          <button type="button" data-m="interactive" aria-pressed="false">빠른 반응</button>
-          <button type="button" data-m="balanced" aria-pressed="true">균형</button>
-          <button type="button" data-m="playback" aria-pressed="false">끊김 방지</button>
-        </div>
-        <p class="note">소리가 끊기면 오른쪽으로, 반응이 느리면 왼쪽으로 바꿔 보세요.</p>
-        <p class="note" id="lat-note"></p>
       </div>
     </div>
   </section>
@@ -1091,7 +1077,8 @@ function ensureAudio() {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return false;
     /* Output buffer size trades response time against dropouts and the right point differs per phone:
-       'interactive' = smallest buffer, 'balanced' = middle, 'playback' = largest. Chosen on the records screen. */
+       'interactive' = smallest buffer, 'balanced' = middle, 'playback' = largest. 'balanced' tested well on a phone
+       (about 76ms reported output latency, no dropouts); a value saved while testing is still honoured. */
     ctx = new AC({ latencyHint: audioMode() });
     const out = ctx.createDynamicsCompressor();
     out.threshold.value = -12; out.knee.value = 10; out.ratio.value = 4; out.attack.value = 0.005; out.release.value = 0.15;
@@ -1130,26 +1117,6 @@ function ensureAudio() {
 function audioMode() {
   const m = Store.data.pref.lat;
   return m === 'interactive' || m === 'playback' ? m : 'balanced';
-}
-/* switch the output buffer: close the audio context and let the next sound build a fresh one */
-function setAudioMode(m) {
-  if (playing) stop(null, true);
-  Store.data.pref.lat = m;
-  Store.save();
-  if (ctx) { try { ctx.close(); } catch (e) {} }
-  ctx = null; bus = null; current = null; oneShots = [];
-  drumCache = null; drumVoices = null;
-  Object.keys(sampleCache).forEach((k) => { delete sampleCache[k]; });
-  Object.keys(kitLoaded).forEach((k) => { delete kitLoaded[k]; });
-  ctxGen += 1;
-  renderAudioMode();
-  if (ensureAudio()) loadKit().then(renderAudioMode).catch(() => {});
-}
-function renderAudioMode() {
-  $$('#lat button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.m === audioMode())));
-  $('#lat-note').textContent = ctx
-    ? '지금 기기가 알려주는 출력 지연: 약 ' + Math.round(((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000) + 'ms (블루투스 지연은 포함되지 않을 수 있어요)'
-    : '소리를 한 번 재생하면 출력 지연이 여기에 표시돼요.';
 }
 function currentKit() { return KITS[state.kit] || KITS.piano; }
 function decodeAudio(ab) { return new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej)); }
@@ -1677,7 +1644,7 @@ function renderRecords() {
     list.appendChild(li);
   });
 }
-function openRecords() { show('records'); renderRecords(); renderAudioMode(); }
+function openRecords() { show('records'); renderRecords(); }
 function showHome() {
   clearTimeout(beatTimer);
   if (playing) stop();
@@ -2139,8 +2106,6 @@ $('#acc').addEventListener('click', (e) => {
   renderLevel();
 });
 markAcc();
-
-$('#lat').addEventListener('click', (e) => { const b = e.target.closest('button[data-m]'); if (b && b.dataset.m !== audioMode()) setAudioMode(b.dataset.m); });
 
 /* backing instrument */
 if (KITS[Store.data.pref.kit]) state.kit = Store.data.pref.kit;
