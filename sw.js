@@ -1,9 +1,64 @@
 /* Music Hero service worker.
    Page and manifest: network first, so a push shows up on the next open; the cache is the offline fallback.
    Library, icons and fonts: cache first, since they only change with a new file name or VERSION. */
-const VERSION = 'v8';
+const VERSION = 'v9';
 const CACHE = 'musichero-' + VERSION;
-const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'vendor/tone-14.8.49.js', 'icons/icon-192.png', 'icons/icon-512.png'];
+const SHELL = [
+  './',
+  'index.html',
+  'manifest.webmanifest',
+  'icons/icon-192.png',
+  'icons/icon-512.png',
+  'samples/acoustic_grand_piano/A3.mp3',
+  'samples/acoustic_grand_piano/A4.mp3',
+  'samples/acoustic_grand_piano/A5.mp3',
+  'samples/acoustic_grand_piano/C3.mp3',
+  'samples/acoustic_grand_piano/C4.mp3',
+  'samples/acoustic_grand_piano/C5.mp3',
+  'samples/acoustic_grand_piano/C6.mp3',
+  'samples/acoustic_grand_piano/Eb3.mp3',
+  'samples/acoustic_grand_piano/Eb4.mp3',
+  'samples/acoustic_grand_piano/Eb5.mp3',
+  'samples/acoustic_grand_piano/Gb3.mp3',
+  'samples/acoustic_grand_piano/Gb4.mp3',
+  'samples/acoustic_grand_piano/Gb5.mp3',
+  'samples/acoustic_guitar_steel/A3.mp3',
+  'samples/acoustic_guitar_steel/A4.mp3',
+  'samples/acoustic_guitar_steel/A5.mp3',
+  'samples/acoustic_guitar_steel/C3.mp3',
+  'samples/acoustic_guitar_steel/C4.mp3',
+  'samples/acoustic_guitar_steel/C5.mp3',
+  'samples/acoustic_guitar_steel/C6.mp3',
+  'samples/acoustic_guitar_steel/Eb3.mp3',
+  'samples/acoustic_guitar_steel/Eb4.mp3',
+  'samples/acoustic_guitar_steel/Eb5.mp3',
+  'samples/acoustic_guitar_steel/Gb3.mp3',
+  'samples/acoustic_guitar_steel/Gb4.mp3',
+  'samples/acoustic_guitar_steel/Gb5.mp3',
+  'samples/electric_bass_finger/A2.mp3',
+  'samples/electric_bass_finger/C3.mp3',
+  'samples/electric_bass_finger/Eb2.mp3',
+  'samples/electric_bass_finger/Eb3.mp3',
+  'samples/electric_bass_finger/Gb2.mp3',
+  'samples/electric_piano_2/A3.mp3',
+  'samples/electric_piano_2/A4.mp3',
+  'samples/electric_piano_2/A5.mp3',
+  'samples/electric_piano_2/C3.mp3',
+  'samples/electric_piano_2/C4.mp3',
+  'samples/electric_piano_2/C5.mp3',
+  'samples/electric_piano_2/C6.mp3',
+  'samples/electric_piano_2/Eb3.mp3',
+  'samples/electric_piano_2/Eb4.mp3',
+  'samples/electric_piano_2/Eb5.mp3',
+  'samples/electric_piano_2/Gb3.mp3',
+  'samples/electric_piano_2/Gb4.mp3',
+  'samples/electric_piano_2/Gb5.mp3',
+  'samples/synth_bass_1/A2.mp3',
+  'samples/synth_bass_1/C3.mp3',
+  'samples/synth_bass_1/Eb2.mp3',
+  'samples/synth_bass_1/Eb3.mp3',
+  'samples/synth_bass_1/Gb2.mp3'
+];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
