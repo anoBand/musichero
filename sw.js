@@ -1,7 +1,7 @@
 /* Music Hero service worker.
    Page and manifest: network first, so a push shows up on the next open; the cache is the offline fallback.
    Library, icons and fonts: cache first, since they only change with a new file name or VERSION. */
-const VERSION = 'v10';
+const VERSION = 'v11';
 const CACHE = 'musichero-' + VERSION;
 const SHELL = [
   './',
