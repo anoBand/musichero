@@ -98,7 +98,10 @@ h2 { margin: 0; font: 500 0.75rem/1 var(--font-data); letter-spacing: 0.06em; te
 /* today */
 .today { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--bar); border-radius: 10px; padding: 16px; display: grid; gap: 14px; }
 .today-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; }
-#theme[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.icon-btn { width: 40px; min-height: 40px; padding: 0; display: grid; place-items: center; }
+.icon-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+/* sun while light, moon while dark */
+#theme[aria-pressed="true"] .i-sun, #theme[aria-pressed="false"] .i-moon { display: none; }
 .home-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
 .cal { position: relative; display: grid; justify-items: center; gap: 4px; padding: 0; border: 0; background: none; color: var(--ink); cursor: pointer; font: inherit; }
 .cal svg { width: 4.4rem; height: 4.4rem; display: block; }
@@ -341,7 +344,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
         <div class="eyebrow">매일 연습</div>
         <h1>Music Hero</h1>
       </div>
-      <button class="ghost" type="button" id="theme" aria-pressed="false">다크 모드</button>
+      <button class="ghost icon-btn" type="button" id="theme" aria-pressed="false" aria-label="다크 모드" title="다크 모드">
+        <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.6M12 18.9v2.6M2.5 12h2.6M18.9 12h2.6M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M5.3 18.7l1.8-1.8M16.9 7.1l1.8-1.8"/></svg>
+        <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.2 8.2 0 1 0 10.2 10.2z"/></svg>
+      </button>
     </header>
 
     <div class="today">
