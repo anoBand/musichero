@@ -1073,7 +1073,8 @@ function ensureAudio() {
   if (!ctx) {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return false;
-    ctx = new AC({ latencyHint: 'playback' });
+    /* 'interactive' asks for the smallest output buffer: with nothing synthesized live there is no need for a large one */
+    ctx = new AC({ latencyHint: 'interactive' });
     const out = ctx.createDynamicsCompressor();
     out.threshold.value = -12; out.knee.value = 10; out.ratio.value = 4; out.attack.value = 0.005; out.release.value = 0.15;
     out.connect(ctx.destination);
@@ -1364,7 +1365,7 @@ async function start(opts) {
   const drum = drumsFor(chords.length, tempo);
   const beats = opts.countIn === false ? 0 : (inPractice() ? 4 : 2);
   const beatSec = 60 / tempo;
-  const t0c = ctx.currentTime + 0.06;
+  const t0c = ctx.currentTime + (beats ? 0.05 : 0.008);
   const when = t0c + beats * beatSec;
   const offset = (opts.bar || 0) * stems.dur / chords.length;
   current = {
@@ -1444,7 +1445,7 @@ async function previewTonic(pc) {
   try { kit = await loadKit(); } catch (e) { return; }
   clearTimeout(beatTimer);
   if (playing) stop(null, true);
-  playOne(kit.chord, 60 + pc, ctx.currentTime + 0.01, 0.7, 0.8);
+  playOne(kit.chord, 60 + pc, ctx.currentTime + 0.004, 0.7, 0.8);
 }
 /* about three seconds of drums at the chosen tempo, shortly after the tempo control settles */
 function previewBeat() {
@@ -1467,7 +1468,7 @@ async function audition(i) {
   if (!ensureAudio()) return;
   let kit;
   try { kit = await loadKit(); } catch (e) { return; }
-  playOne(kit.chord, 72 + state.q.options[i].pc, ctx.currentTime + 0.01, 90 / bpm, 0.9);
+  playOne(kit.chord, 72 + state.q.options[i].pc, ctx.currentTime + 0.004, 90 / bpm, 0.9);
 }
 /* get the audio ready on the first touch, so the first sound doesn't wait for it */
 document.addEventListener('pointerdown', () => { if (ensureAudio()) loadKit().catch(() => {}); }, { once: true });
@@ -1909,9 +1910,20 @@ $('#quit').addEventListener('click', showHome);
 $('#p-quit').addEventListener('click', showHome);
 $('#next').addEventListener('click', () => { nextQuestion(); });
 $('#confirm').addEventListener('click', () => { if (state.sel >= 0) answer(state.sel); });
+/* Notes in the key quiz sound on touch-down, not on release (a click arrives only when the finger lifts).
+   The click that follows is ignored; a click with no touch-down before it (keyboard) still works. */
+let downHandled = false;
+$('#opts').addEventListener('pointerdown', (e) => {
+  const b = e.target.closest('button.opt');
+  if (!b || !state.q || state.q.type !== 'key') return;
+  const i = Number(b.dataset.i);
+  downHandled = true;
+  if (state.phase === 'asking') pick(i); else if (state.phase === 'answered') audition(i);
+});
 $('#opts').addEventListener('click', (e) => {
   const b = e.target.closest('button.opt');
   if (!b) return;
+  if (downHandled) { downHandled = false; return; }
   const i = Number(b.dataset.i);
   const isKey = state.q && state.q.type === 'key';
   if (state.phase === 'asking') { if (isKey) pick(i); else answer(i); }
@@ -2050,7 +2062,7 @@ $('#p-timer').addEventListener('click', (e) => {
 
 /* 3. chord blocks are tappable in the quiz and in practice */
 ['#chart', '#p-chart'].forEach((sel) => {
-  $(sel).addEventListener('click', (e) => {
+  $(sel).addEventListener('pointerdown', (e) => {
     const bar = e.target.closest('.bar');
     if (bar) jumpTo(Array.prototype.indexOf.call(bar.parentNode.children, bar));
   });
