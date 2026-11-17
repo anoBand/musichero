@@ -1,11 +1,20 @@
 /* Music Hero service worker.
-   Page and manifest: network first, so a push shows up on the next open; the cache is the offline fallback.
-   Library, icons and fonts: cache first, since they only change with a new file name or VERSION. */
-const VERSION = 'v16';
+   Page, scripts, styles and manifest: network first, so a push shows up on the next open; the cache is the offline fallback.
+   Samples, icons and fonts: cache first, since they only change with a new file name or VERSION. */
+const VERSION = 'v17';
 const CACHE = 'musichero-' + VERSION;
 const SHELL = [
   './',
   'index.html',
+  'css/app.css',
+  'js/theory.js',
+  'js/progress.js',
+  'js/app-state.js',
+  'js/audio.js',
+  'js/views.js',
+  'js/quiz.js',
+  'js/practice.js',
+  'js/main.js',
   'manifest.webmanifest',
   'icons/icon-192.png',
   'icons/icon-512.png',
@@ -77,7 +86,7 @@ self.addEventListener('fetch', (e) => {
   const own = url.origin === self.location.origin;
   const fonts = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
   if (!own && !fonts) return;
-  const fresh = own && (req.mode === 'navigate' || /(\/|index\.html|manifest\.webmanifest)$/.test(url.pathname));
+  const fresh = own && (req.mode === 'navigate' || /(\/|index\.html|manifest\.webmanifest|\.js|\.css)$/.test(url.pathname));
   e.respondWith(
     caches.open(CACHE).then(async (cache) => {
       const put = (res) => { if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone()); return res; };
