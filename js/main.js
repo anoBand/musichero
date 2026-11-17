@@ -275,6 +275,7 @@ document.addEventListener('visibilitychange', () => { if (document.hidden) flush
 renderHome();
 
 /* offline + installable */
-if ('serviceWorker' in navigator) {
+const insideApp = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+if ('serviceWorker' in navigator && !insideApp) {
   window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
 }

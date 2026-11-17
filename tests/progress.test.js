@@ -71,3 +71,25 @@ test('records: activity levels and longest streak', () => {
   ['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-05'].forEach((k) => { D.days[k] = day(5); });
   assert.equal(P.longestStreak(D), 3);
 });
+
+test('reminders: next seven days, today skipped when done or past', () => {
+  const D = P.freshData();
+  const morning = new Date(2026, 10, 17, 9, 0);
+  let plan = P.reminderPlan(D, morning, 20, 0, 7);
+  assert.equal(plan.length, 7);
+  assert.equal(plan[0].at.getDate(), 17);
+  assert.equal(plan[0].at.getHours(), 20);
+  assert.equal(new Set(plan.map((p) => p.id)).size, 7);
+  plan = P.reminderPlan(D, new Date(2026, 10, 17, 21, 0), 20, 0, 7);
+  assert.equal(plan.length, 6, 'time already passed today');
+  assert.equal(plan[0].at.getDate(), 18);
+  D.days['2026-11-17'] = { q: 5, right: 5, practice: 0, best: 0, cur: 0 };
+  plan = P.reminderPlan(D, morning, 20, 0, 7);
+  assert.equal(plan[0].at.getDate(), 18, 'goal met today');
+  D.days['2026-11-16'] = { q: 5, right: 5, practice: 0, best: 0, cur: 0 };
+  delete D.days['2026-11-17'];
+  plan = P.reminderPlan(D, morning, 20, 0, 7);
+  assert.ok(plan[0].body.startsWith('1일 연속'), plan[0].body);
+  plan = P.reminderPlan(D, new Date(2026, 11, 29, 9, 0), 20, 0, 7);
+  assert.equal(plan[6].at.getFullYear(), 2027, 'crosses the new year');
+});

@@ -4,9 +4,21 @@
   "description": "Ear training app: hear a backing track, name the chord progression or the key.",
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "smoke": "node tests/smoke.mjs"
+    "smoke": "node tests/smoke.mjs",
+    "build:web": "node scripts/build-web.mjs",
+    "sync": "npm run build:web && npx cap sync android"
   },
   "devDependencies": {
     "playwright": "1.48.2"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/cli": "8.5.3",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/local-notifications": "8.3.1"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

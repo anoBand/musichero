@@ -34,4 +34,27 @@ npm run smoke                         # 브라우저로 모든 화면 확인
 
 push하면 GitHub Actions에서 두 테스트가 자동으로 돌아갑니다.
 
-빌드 과정은 없습니다. 로컬에서 볼 때는 `python3 -m http.server` 후 `/musichero/`가 아닌 저장소 폴더 경로로 엽니다.
+
+## 웹 배포 (자기 서버)
+
+웹 버전은 빌드가 필요 없는 정적 파일입니다. 저장소 폴더를 그대로 웹 서버(Nginx, Caddy 등)로 내보내면 됩니다.
+
+- 서버는 **가장 높은 `v*` 태그**만 받아갑니다: `scripts/deploy.sh /srv/musichero`
+- 처음 실행하면 저장소를 받아오고, 다음부터는 새 태그가 있을 때만 바꿉니다. cron으로 주기 실행하면 됩니다.
+- 서버에서 파일을 직접 고치지 않습니다. 수정은 모두 저장소에 push합니다.
+- 오프라인 동작(서비스 워커)은 HTTPS에서만 됩니다.
+
+배포 순서: main에 push → GitHub Pages(main을 그대로 따라감)에서 확인 → 테스트 통과 확인 → 태그
+
+```
+git tag v1.0.0 && git push origin v1.0.0
+```
+
+## 안드로이드 앱 (Capacitor)
+
+- 앱 ID: `io.github.anoband.musichero`, 같은 웹 파일을 `www/`로 복사해 앱에 넣습니다(`npm run sync`).
+- 안드로이드 스튜디오 없이 GitHub Actions가 빌드합니다(`.github/workflows/android.yml`).
+  - main에 push: Actions 탭의 해당 실행 > Artifacts에서 APK
+  - `v*` 태그 push: Releases에 APK가 첨부되어 폰에서 바로 받을 수 있음
+- 테스트용 APK는 저장소의 고정 키(`android/app/test-signing.keystore`)로 서명합니다. 그래서 새 APK를 지우지 않고 덮어 설치할 수 있습니다. 플레이스토어 출시용 키는 별도로 만들어 저장소 밖에 둡니다.
+- 앱에서만 보이는 기능: 매일 알림(그날 목표를 채웠으면 보내지 않음), 하드웨어 뒤로 가기

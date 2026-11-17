@@ -1,0 +1,14 @@
+{
+  "appId": "io.github.anoband.musichero",
+  "appName": "Music Hero",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0D1518"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_note",
+      "iconColor": "#4CCFC3"
+    }
+  }
+}

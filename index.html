@@ -70,6 +70,20 @@
       </div>
     </div>
 
+    <div class="panel" id="remind-panel" hidden>
+      <div class="field">
+        <span class="lbl">매일 알림</span>
+        <div class="remind-row">
+          <div class="seg" id="remind" role="group" aria-label="매일 알림">
+            <button type="button" data-r="off" aria-pressed="true">끄기</button>
+            <button type="button" data-r="on" aria-pressed="false">켜기</button>
+          </div>
+          <input type="time" id="remind-time" value="20:00" aria-label="알림 시각">
+        </div>
+        <p class="note" id="remind-note"></p>
+      </div>
+    </div>
+
     <p class="note" id="store-note" hidden>이 환경에서는 기록을 저장할 수 없어서, 화면을 닫으면 사라져요.</p>
     <div class="foot">
       <div class="seg" id="acc" role="group" aria-label="조성 표기">
@@ -292,5 +306,6 @@
 <script src="js/quiz.js"></script>
 <script src="js/practice.js"></script>
 <script src="js/main.js"></script>
+<script src="js/native.js"></script>
 </body>
 </html>

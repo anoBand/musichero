@@ -107,6 +107,23 @@ function longestStreak(data) {
   });
   return best;
 }
+/* Daily reminders for the next `days` days at hour:minute local time. Today is skipped when its goal is already
+   met or the time has passed, so a reminder only goes out when there is still something to do.
+   Returns [{ id, at: Date, title, body }]; ids stay the same day to day so rescheduling replaces them. */
+function reminderPlan(data, now, hour, minute, days) {
+  const out = [];
+  const todayKey = dayKey(now);
+  const streak = streakCount(data, todayKey);
+  for (let i = 0; i < (days || 7); i++) {
+    const at = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i, hour, minute, 0, 0);
+    if (i === 0 && (at <= now || goalMet(data.days[todayKey]))) continue;
+    const body = i === 0 && streak > 0
+      ? streak + '일 연속 기록이 이어지도록 오늘 5문제만 풀어볼까요?'
+      : '오늘 목표: 5문제 또는 연습 10분';
+    out.push({ id: 100 + i, at: at, title: 'Music Hero', body: body });
+  }
+  return out;
+}
 function dueReviews(data, k) { return data.review.filter((r) => r.due <= k); }
 function totals(data) {
   let q = 0, right = 0, practice = 0;
@@ -125,6 +142,6 @@ if (typeof module !== 'undefined') {
   module.exports = {
     GOAL_Q, GOAL_PRACTICE, XP_RIGHT, XP_WRONG, dayKey, addDays, weekStart, freshData, goalMet, streakCount,
     weekGoalDays, questList, settleQuests, recordAnswer, addPractice, dueReviews, totals, levelInfo, titleFor,
-    unlockedAt, activityLevel, longestStreak
+    unlockedAt, activityLevel, longestStreak, reminderPlan
   };
 }
