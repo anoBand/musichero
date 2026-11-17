@@ -2,8 +2,12 @@
 /* ---- solo practice ---- */
 function practiceProg() { return POOL.find((p) => p.id === practice.progId); }
 function applyPractice(live) {
-  const p = practiceProg();
-  chords = chordsFor(p, keyObj(p.mode, practice.keyPc));
+  if (practice.custom) {
+    chords = parseProgressionText(practice.custom).chords;
+  } else {
+    const p = practiceProg();
+    chords = chordsFor(p, keyObj(p.mode, practice.keyPc));
+  }
   prepareVoicing(chords);
   renderChart();
   if (live && playing) morph();

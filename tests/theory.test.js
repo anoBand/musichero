@@ -119,3 +119,42 @@ test('assign: distinct targets first, then doubling', () => {
   assert.equal(new Set(a).size, 3);
   assert.equal(T.assign([60, 64, 67, 72], [60, 64, 67]).length, 4);
 });
+
+test('styles: every event is on the bar grid with sensible values', () => {
+  for (const id of T.STYLE_IDS) {
+    const s = T.STYLES[id];
+    assert.ok(s.label && s.swing >= 0 && s.swing < 1, id);
+    for (const part of ['chord', 'bass', 'melody']) {
+      for (const [step, len, vel, which] of s[part]) {
+        assert.ok(Number.isInteger(step) && step >= 0 && step < 16, `${id} ${part} step ${step}`);
+        assert.ok(len > 0 && len <= 16 && vel > 0 && vel <= 1, `${id} ${part}`);
+        if (part === 'chord') assert.ok(which === 'all' || Number.isInteger(which), `${id} voice ${which}`);
+        else assert.ok(['r', 'f', 'o', '6'].includes(which), `${id} ${part} note ${which}`);
+      }
+    }
+    for (const v of ['kick', 'snare', 'rim', 'hat']) {
+      for (const [step, vel] of s.drums[v]) assert.ok(step >= 0 && step < 16 && vel > 0 && vel <= 1, `${id} ${v}`);
+    }
+    assert.ok(s.chord.length > 0 && s.bass.length > 0, id);
+  }
+});
+
+test('typed progressions', () => {
+  const ok = (text, expect) => {
+    const r = T.parseProgressionText(text);
+    assert.ok(!r.error, text + ': ' + r.error);
+    assert.equal(r.chords.map((c) => c.root + c.quality + (c.slash ? '/' + c.slash : '')).join(' '), expect);
+  };
+  ok('C G Am F', 'C G Am F');
+  ok('c, g/b | am - f', 'C G/B Am F');
+  ok('Bbmaj7 Eb7 F#m7b5 B7', 'B♭maj7 E♭7 F♯m7b5 B7');
+  ok('D♭ A♭ B♭m G♭', 'D♭ A♭ B♭m G♭');
+  ok('CΔ7 Dmin7 G7sus4 Co7', 'Cmaj7 Dm7 G7sus4 Cdim7');
+  assert.ok(T.parseProgressionText('').error);
+  assert.ok(T.parseProgressionText('C D E F G A B C D').error, 'more than 8');
+  assert.match(T.parseProgressionText('C Hm F').error, /"Hm"/);
+  assert.ok(T.parseProgressionText('Cxyz').error);
+  const g9 = T.parseProgressionText('G9 Cm9 Fmaj9').chords;
+  const v = T.voiceLeading(g9);
+  v.forEach((notes, i) => assert.deepEqual(new Set(notes.map((n) => n % 12)), new Set(g9[i].intervals.map((x) => (g9[i].pc + x) % 12))));
+});

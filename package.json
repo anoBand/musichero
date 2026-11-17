@@ -1,6 +1,6 @@
 {
   "name": "musichero",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Ear training app: hear a backing track, name the chord progression or the key.",
   "scripts": {

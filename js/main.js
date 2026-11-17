@@ -151,11 +151,19 @@ buildKeyGrid($('#keygrid'), true, (v) => {
   if (state.keyPc !== null) previewTonic(state.keyPc);
 });
 markKeyGrid($('#keygrid'), 'random');
-buildKeyGrid($('#p-keygrid'), false, (v) => { practice.keyPc = Number(v); renderPracticeHead(); applyPractice(true); });
+buildKeyGrid($('#p-keygrid'), false, (v) => { if (practice.custom) return; practice.keyPc = Number(v); renderPracticeHead(); applyPractice(true); });
 markKeyGrid($('#p-keygrid'), String(practice.keyPc));
 
 /* solo practice: progression picker (a full-screen list instead of a dropdown) */
 function renderPracticeHead() {
+  const custom = !!practice.custom;
+  $('#p-keygrid').classList.toggle('off', custom);
+  if (custom) {
+    $('#p-prog-roman').textContent = parseProgressionText(practice.custom).chords.map((c) => c.root + c.quality + (c.slash ? '/' + c.slash : '')).join(' ');
+    $('#p-prog-name').textContent = '직접 입력한 진행 · 키는 입력한 코드 그대로';
+    $('#p-suggest').hidden = true;
+    return;
+  }
   const p = practiceProg();
   $('#p-prog-roman').textContent = p.roman;
   $('#p-prog-name').textContent = (p.name ? p.name + ' · ' : '') + modeWord(p.mode);
@@ -207,6 +215,7 @@ $('#sheet-list').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-id]');
   if (!b) return;
   practice.progId = b.dataset.id;
+  practice.custom = null;
   closeSheet();
   renderPracticeHead();
   applyPractice(true);
@@ -246,6 +255,56 @@ $('#acc').addEventListener('click', (e) => {
   renderLevel();
 });
 markAcc();
+
+/* backing style: quiz (with 'random', a new style each question) and practice (its own choice) */
+const STYLE_CHOICES = STYLE_IDS.concat(['random']);
+STYLE_CHOICES.forEach((id) => {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'chip'; b.dataset.s = id;
+  b.textContent = id === 'random' ? '랜덤' : STYLES[id].label;
+  $('#styles').appendChild(b);
+});
+function renderStyles() {
+  $$('#styles button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.s === state.style)));
+  $('#p-style').textContent = '스타일: ' + STYLES[practice.style].label;
+}
+$('#styles').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-s]');
+  if (!b) return;
+  state.style = b.dataset.s;
+  Store.data.pref.style = state.style;
+  Store.save();
+  renderStyles();
+  if (state.bpmMode === 'fixed' && !LEVELS[state.level]) previewBeat();
+});
+$('#p-style').addEventListener('click', () => {
+  practice.style = STYLE_IDS[(STYLE_IDS.indexOf(practice.style) + 1) % STYLE_IDS.length];
+  Store.data.pref.pstyle = practice.style;
+  Store.save();
+  renderStyles();
+  if (playing) morph();
+});
+if (STYLE_CHOICES.indexOf(Store.data.pref.style) >= 0) state.style = Store.data.pref.style;
+if (STYLES[Store.data.pref.pstyle]) practice.style = Store.data.pref.pstyle;
+renderStyles();
+
+/* typed progression in solo practice */
+function applyCustom() {
+  const text = $('#custom-text').value.trim();
+  const r = parseProgressionText(text);
+  const msg = $('#custom-msg');
+  if (r.error) { msg.textContent = r.error; msg.classList.add('err'); return; }
+  msg.classList.remove('err');
+  practice.custom = text;
+  Store.data.pref.custom = text;
+  Store.save();
+  closeSheet();
+  renderPracticeHead();
+  applyPractice(true);
+}
+$('#custom-go').addEventListener('click', applyCustom);
+$('#custom-text').addEventListener('keydown', (e) => { if (e.key === 'Enter') applyCustom(); });
+if (Store.data.pref.custom) $('#custom-text').value = Store.data.pref.custom;
 
 /* backing instrument */
 if (KITS[Store.data.pref.kit]) state.kit = Store.data.pref.kit;

@@ -128,7 +128,10 @@ function makeDrums(sr) {
   const cn = noise(Math.round(sr * 1.3));
   const crash = new Float32Array(cn.length);
   for (let i = 1; i < crash.length; i++) crash[i] = (cn[i] - cn[i - 1]) * Math.exp(-(i / sr) * 3.4) * 0.11;
-  return { kick: kick, snare: snare, hat: hat, crash: crash };
+  /* rim click: a short bright knock */
+  const rim = new Float32Array(Math.round(sr * 0.04));
+  for (let i = 0; i < rim.length; i++) { const t = i / sr; rim[i] = (Math.sin(2 * Math.PI * 1650 * t) * 0.5 + Math.sin(2 * Math.PI * 520 * t) * 0.4) * Math.exp(-t * 110) * 0.5; }
+  return { kick: kick, snare: snare, hat: hat, crash: crash, rim: rim };
 }
 
 /* ---- mixing: add one recorded note into a loop buffer, wrapping at the end so the loop has no seam ---- */
@@ -150,9 +153,9 @@ function nearestSample(inst, midi) {
   for (let i = 1; i < inst.midis.length; i++) if (Math.abs(inst.midis[i] - midi) < Math.abs(best - midi)) best = inst.midis[i];
   return best;
 }
-function mixNote(out, sr, startIdx, inst, midi, durSec, gain) {
+function mixNote(out, sr, startIdx, inst, midi, durSec, gain, rel) {
   const m = nearestSample(inst, midi);
-  mixSample(out, startIdx, inst.data[m], Math.pow(2, (midi - m) / 12), Math.round(durSec * sr), Math.round(RELEASE * sr), gain);
+  mixSample(out, startIdx, inst.data[m], Math.pow(2, (midi - m) / 12), Math.round(durSec * sr), Math.round((rel || RELEASE) * sr), gain);
 }
 function toBuffer(arr) {
   const b = ctx.createBuffer(1, arr.length, ctx.sampleRate);
@@ -160,51 +163,75 @@ function toBuffer(arr) {
   return b;
 }
 /* chords: beats 1 and 3, held for half a bar. bass: the root on beats 1 and 3. melody: root, root, fifth, root an octave up. */
-function renderStems(chs, tempo, kit) {
+function currentStyle() {
+  const id = inPractice() ? practice.style : (state.qStyle || (state.style === 'random' ? 'pop' : state.style));
+  return STYLES[id] ? id : 'pop';
+}
+/* sample index of a sixteenth step inside a bar, with off-beat eighths pushed late by the style's swing */
+function stepAt(step, barN, swing) {
+  const s16 = barN / 16;
+  return Math.round(step * s16 + (swing && step % 4 === 2 ? swing * s16 : 0));
+}
+function lineNote(base, c, which) {
+  if (which === 'f') return c.bassPc === c.pc ? base + 7 : base;
+  if (which === 'o') return base + 12;
+  if (which === '6') return base + 9;
+  return base;
+}
+function renderStems(chs, tempo, kit, styleId) {
   const sr = ctx.sampleRate;
+  const st16 = STYLES[styleId] || STYLES.pop;
   const barN = Math.round(240 / tempo * sr);
   const L = barN * chs.length;
-  const e8 = barN / 8;
-  const beat = 60 / tempo;
+  const s16sec = 15 / tempo;
+  const dur = (len) => Math.max(0.06, len * s16sec - 0.03);
   const st = { chord: new Float32Array(L), bass: new Float32Array(L), melody: new Float32Array(L) };
   chs.forEach((c, b) => {
     const base = b * barN;
-    [0, 4].forEach((s) => {
-      const at = base + Math.round(s * e8);
-      const vel = jit(s === 0 ? 0.85 : 0.62) * 0.62 * kit.level;
-      c.midi.forEach((m, j) => mixNote(st.chord, sr, at + Math.round(j * kit.strum * sr), kit.chord, m, beat * 2 - 0.04, vel));
-      mixNote(st.bass, sr, at, kit.bass, c.bassMidi, beat * 2 - 0.03, s === 0 ? 0.5 : 0.42);
+    st16.chord.forEach((e) => {
+      const at = base + stepAt(e[0], barN, st16.swing);
+      const vel = jit(e[2]) * 0.62 * kit.level;
+      const rel = e[1] <= 1 ? 0.07 : RELEASE;
+      if (e[3] === 'all') {
+        c.midi.forEach((m, j) => mixNote(st.chord, sr, at + Math.round(j * kit.strum * sr), kit.chord, m, dur(e[1]), vel, rel));
+      } else {
+        const m = e[3] < 0 ? c.midi[c.midi.length - 1] : c.midi[e[3] % c.midi.length];
+        mixNote(st.chord, sr, at, kit.chord, m, dur(e[1]), vel * 1.15, rel);
+      }
     });
-    const mel = c.bassMidi + 12;
-    const fifth = c.bassPc === c.pc ? mel + 7 : mel;
-    [[0, mel, 0.75, 0.9], [3, mel, 0.5, 0.7], [4, fifth, 0.75, 0.8], [6, mel, 0.5, 0.7]].forEach((n) => {
-      mixNote(st.melody, sr, base + Math.round(n[0] * e8), kit.melody, n[1], n[2] * beat, n[3] * 0.5 * kit.level);
+    st16.bass.forEach((e) => {
+      mixNote(st.bass, sr, base + stepAt(e[0], barN, st16.swing), kit.bass, lineNote(c.bassMidi, c, e[3]), dur(e[1]), e[2], e[1] <= 1 ? 0.07 : RELEASE);
+    });
+    st16.melody.forEach((e) => {
+      mixNote(st.melody, sr, base + stepAt(e[0], barN, st16.swing), kit.melody, lineNote(c.bassMidi + 12, c, e[3]), dur(e[1]), e[2] * 0.5 * kit.level, e[1] <= 1 ? 0.07 : RELEASE);
     });
   });
   return { dur: L / sr, bufs: { chord: toBuffer(st.chord), bass: toBuffer(st.bass), melody: toBuffer(st.melody) } };
 }
 function stemsFor(chs, tempo, kit) {
-  if (!chs._st || chs._st.tempo !== tempo || chs._st.kit !== kit.id || chs._st.gen !== ctxGen) {
-    const r = renderStems(chs, tempo, kit);
-    chs._st = { tempo: tempo, kit: kit.id, gen: ctxGen, dur: r.dur, bufs: r.bufs };
+  const style = currentStyle();
+  if (!chs._st || chs._st.tempo !== tempo || chs._st.kit !== kit.id || chs._st.style !== style || chs._st.gen !== ctxGen) {
+    const r = renderStems(chs, tempo, kit, style);
+    chs._st = { tempo: tempo, kit: kit.id, style: style, gen: ctxGen, dur: r.dur, bufs: r.bufs };
   }
   return chs._st;
 }
-function drumsFor(bars, tempo) {
-  const key = bars + ':' + tempo;
+function drumsFor(bars, tempo, styleId) {
+  const style = styleId || currentStyle();
+  const key = bars + ':' + tempo + ':' + style;
   if (drumCache && drumCache.key === key) return drumCache.buf;
   const sr = ctx.sampleRate;
   if (!drumVoices) drumVoices = makeDrums(sr);
+  const pat = STYLES[style].drums;
+  const sw = STYLES[style].swing;
   const barN = Math.round(240 / tempo * sr);
   const out = new Float32Array(barN * bars);
+  const hit = (voice, at, vel) => mixSample(out, at, drumVoices[voice], 1, drumVoices[voice].length, 1, vel);
   for (let b = 0; b < bars; b++) {
-    for (let s = 0; s < 8; s++) {
-      const at = b * barN + Math.round(s * barN / 8);
-      if (s === 0 || s === 4) mixSample(out, at, drumVoices.kick, 1, drumVoices.kick.length, 1, 0.55);
-      if (s === 0 && b === 0 && bars > 1) mixSample(out, at, drumVoices.crash, 1, drumVoices.crash.length, 1, 0.5);
-      if (s === 2 || s === 6) mixSample(out, at, drumVoices.snare, 1, drumVoices.snare.length, 1, 0.5);
-      mixSample(out, at, drumVoices.hat, 1, drumVoices.hat.length, 1, jit(s % 2 === 0 ? 0.55 : 0.3));
-    }
+    const base = b * barN;
+    if (b === 0 && bars > 1) hit('crash', base, 0.5);
+    ['kick', 'snare', 'rim'].forEach((v) => pat[v].forEach((e) => hit(v, base + stepAt(e[0], barN, sw), e[1])));
+    pat.hat.forEach((e) => hit('hat', base + stepAt(e[0], barN, sw), jit(e[1])));
   }
   drumCache = { key: key, buf: toBuffer(out) };
   return drumCache.buf;
@@ -348,7 +375,7 @@ async function start(opts) {
   const when = t0c + beats * beatSec;
   const offset = (opts.bar || 0) * stems.dur / chords.length;
   current = {
-    t0: when - offset, when: when, dur: stems.dur, bars: chords.length, tempo: tempo, kit: kit.id,
+    t0: when - offset, when: when, dur: stems.dur, bars: chords.length, tempo: tempo, kit: kit.id, style: currentStyle(),
     tonal: startSources(stems.bufs, when, offset, false), drum: startSources({ drums: drum }, when, offset, false)
   };
   for (let i = 0; i < beats; i++) click(t0c + i * beatSec, i === 0);
@@ -401,7 +428,7 @@ async function morph() {
   }
   killSources(cur.tonal, at);
   cur.tonal = startSources(stems.bufs, at, offset, true);
-  if (tempo !== cur.tempo || chords.length !== cur.bars) {
+  if (tempo !== cur.tempo || chords.length !== cur.bars || currentStyle() !== cur.style) {
     killSources(cur.drum, at);
     cur.drum = startSources({ drums: drumsFor(chords.length, tempo) }, at, offset, true);
   }
@@ -410,6 +437,7 @@ async function morph() {
   cur.dur = stems.dur;
   cur.bars = chords.length;
   cur.tempo = tempo;
+  cur.style = currentStyle();
   cur.lastE = -1;
 }
 /* tempo slider in practice: wait until it settles, then swap */
@@ -437,7 +465,7 @@ function previewBeat() {
     const token = ++playToken;
     const beats = Math.max(4, Math.round(3 * bpm / 60));
     const when = ctx.currentTime + 0.05;
-    current = { preview: true, t0: when, when: when, dur: 240 / bpm, bars: 1, tempo: bpm, tonal: [], drum: startSources({ drums: drumsFor(1, bpm) }, when, 0, false) };
+    current = { preview: true, t0: when, when: when, dur: 240 / bpm, bars: 1, tempo: bpm, tonal: [], drum: startSources({ drums: drumsFor(1, bpm, state.style === 'random' ? 'pop' : state.style) }, when, 0, false) };
     playing = true;
     setTimeout(() => { if (token === playToken) stop(null, true); }, (beats * 60 / bpm + 0.05) * 1000);
   }, 250);

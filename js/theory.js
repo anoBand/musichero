@@ -4,16 +4,23 @@ const NOTE_PC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
 const QUALITIES = {
   '': [0, 4, 7], 'm': [0, 3, 7], '7': [0, 4, 7, 10], 'maj7': [0, 4, 7, 11], 'M7': [0, 4, 7, 11],
   'm7': [0, 3, 7, 10], 'dim': [0, 3, 6], 'aug': [0, 4, 8], 'sus4': [0, 5, 7], 'sus2': [0, 2, 7],
-  '6': [0, 4, 7, 9], 'm6': [0, 3, 7, 9], 'add9': [0, 4, 7, 14]
+  '6': [0, 4, 7, 9], 'm6': [0, 3, 7, 9], 'add9': [0, 4, 7, 14],
+  'm7b5': [0, 3, 6, 10], 'dim7': [0, 3, 6, 9], '7sus4': [0, 5, 7, 10], '9': [0, 4, 7, 10, 14],
+  'm9': [0, 3, 7, 10, 14], 'maj9': [0, 4, 7, 11, 14], 'mmaj7': [0, 3, 7, 11], '5': [0, 7]
 };
+/* other ways people write the same chord */
+const QUALITY_ALIAS = { 'min': 'm', '-': 'm', 'M': '', 'maj': '', 'Δ': 'maj7', 'Δ7': 'maj7', 'ma7': 'maj7', 'min7': 'm7', '-7': 'm7',
+  'ø': 'm7b5', 'ø7': 'm7b5', 'o': 'dim', 'o7': 'dim7', '°': 'dim', '°7': 'dim7', '+': 'aug', 'sus': 'sus4', 'mM7': 'mmaj7' };
 function accOf(s) { return s === '#' ? 1 : s === 'b' ? -1 : 0; }
 function accGlyph(s) { return s === '#' ? '♯' : s === 'b' ? '♭' : ''; }
 function parseChord(raw) {
-  const token = raw.charAt(0).toUpperCase() + raw.slice(1);
+  const token = (raw.charAt(0).toUpperCase() + raw.slice(1)).replace(/\/([a-g])/, (m, l) => '/' + l.toUpperCase());
   const m = /^([A-G])([#b]?)([^/]*)(?:\/([A-G])([#b]?))?$/.exec(token);
   if (!m) return null;
-  const intervals = QUALITIES[m[3]];
+  const quality = QUALITIES[m[3]] ? m[3] : QUALITY_ALIAS[m[3]];
+  const intervals = quality === undefined ? null : QUALITIES[quality];
   if (!intervals) return null;
+  m[3] = quality;
   const pc = (NOTE_PC[m[1]] + accOf(m[2]) + 12) % 12;
   const bassPc = m[4] ? (NOTE_PC[m[4]] + accOf(m[5]) + 12) % 12 : pc;
   return {
@@ -55,6 +62,66 @@ const POOL = [
   { id: 'min-6371', mode: 'minor', roman: '♭VI–♭III–♭VII–i',  name: '',                        steps: [[8, ''], [3, ''], [10, ''], [0, 'm']] },
   { id: 'min-iv',   mode: 'minor', roman: 'iv–i–♭VII–♭VI',    name: '',                        steps: [[5, 'm'], [0, 'm'], [10, ''], [8, '']] }
 ];
+/* A progression typed by the user: one chord per bar, 1 to 8 bars, separated by spaces, commas, bars or dashes.
+   Returns { chords } or { error } with a message to show. */
+function parseProgressionText(text) {
+  const tokens = String(text || '').replace(/[|,\u2013\u2014→>]/g, ' ').replace(/\s-\s|^-|\s-$/g, ' ').split(/\s+/).filter(Boolean)
+    .map((t) => t.replace(/♭/g, 'b').replace(/♯/g, '#'));
+  if (!tokens.length) return { error: '코드를 하나 이상 입력해 주세요. 예: C G Am F' };
+  if (tokens.length > 8) return { error: '코드는 8개(8마디)까지 입력할 수 있어요.' };
+  const chords = [];
+  for (const t of tokens) {
+    const c = parseChord(t);
+    if (!c) return { error: '"' + t + '"을(를) 읽지 못했어요. 예: C, Am, F#m7, Bbmaj7, G/B, Dm7b5' };
+    chords.push(c);
+  }
+  return { chords: chords };
+}
+
+/* Backing styles. One bar on a grid of sixteenths, repeated for every chord.
+   chord:  [step, length, velocity, voice]  voice 'all' = the whole chord, a number = that note of the voicing
+           (from the bottom; -1 = top), for arpeggios
+   bass, melody: [step, length, velocity, note]  note 'r' root, 'f' fifth, 'o' octave, '6' sixth
+   drums: kick / snare / rim / hat: [step, velocity]
+   swing: how far off-beat eighths are pushed late, in sixteenths (0.667 = triplet shuffle) */
+const STYLES = {
+  pop: { label: '팝', swing: 0,
+    chord: [[0, 8, 0.85, 'all'], [8, 8, 0.62, 'all']],
+    bass: [[0, 8, 0.5, 'r'], [8, 8, 0.42, 'r']],
+    melody: [[0, 3, 0.9, 'r'], [6, 2, 0.7, 'r'], [8, 3, 0.8, 'f'], [12, 2, 0.7, 'r']],
+    drums: { kick: [[0, 0.55], [8, 0.55]], snare: [[4, 0.5], [12, 0.5]], rim: [],
+             hat: [[0, 0.55], [2, 0.3], [4, 0.55], [6, 0.3], [8, 0.55], [10, 0.3], [12, 0.55], [14, 0.3]] } },
+  ballad: { label: '발라드', swing: 0,
+    chord: [[0, 6, 0.7, 0], [2, 6, 0.5, 1], [4, 6, 0.55, 2], [6, 6, 0.5, -1], [8, 6, 0.62, 0], [10, 6, 0.5, 1], [12, 6, 0.55, 2], [14, 4, 0.48, 1]],
+    bass: [[0, 15, 0.5, 'r']],
+    melody: [[0, 6, 0.6, 'o'], [8, 6, 0.5, 'f']],
+    drums: { kick: [[0, 0.45], [10, 0.28]], snare: [[4, 0.3], [12, 0.3]], rim: [], hat: [[0, 0.3], [4, 0.25], [8, 0.3], [12, 0.25]] } },
+  rock: { label: '록', swing: 0,
+    chord: [[0, 2, 0.7, 'all'], [2, 2, 0.48, 'all'], [4, 2, 0.6, 'all'], [6, 2, 0.48, 'all'], [8, 2, 0.7, 'all'], [10, 2, 0.48, 'all'], [12, 2, 0.6, 'all'], [14, 2, 0.48, 'all']],
+    bass: [[0, 2, 0.5, 'r'], [2, 2, 0.4, 'r'], [4, 2, 0.45, 'r'], [6, 2, 0.4, 'r'], [8, 2, 0.5, 'r'], [10, 2, 0.4, 'r'], [12, 2, 0.45, 'r'], [14, 2, 0.4, 'r']],
+    melody: [[0, 4, 0.8, 'r'], [6, 2, 0.6, 'o'], [8, 4, 0.75, 'f'], [14, 2, 0.6, 'r']],
+    drums: { kick: [[0, 0.6], [6, 0.45], [8, 0.6]], snare: [[4, 0.6], [12, 0.6]], rim: [],
+             hat: [[0, 0.5], [2, 0.38], [4, 0.5], [6, 0.38], [8, 0.5], [10, 0.38], [12, 0.5], [14, 0.38]] } },
+  funk: { label: '펑크', swing: 0,
+    chord: [[2, 1, 0.6, 'all'], [3, 1, 0.45, 'all'], [6, 1, 0.6, 'all'], [10, 1, 0.6, 'all'], [11, 1, 0.45, 'all'], [14, 1, 0.6, 'all']],
+    bass: [[0, 2, 0.6, 'r'], [3, 1, 0.45, 'o'], [6, 2, 0.5, 'r'], [8, 1, 0.55, 'f'], [10, 2, 0.5, 'r'], [13, 1, 0.45, 'o'], [14, 2, 0.5, 'r']],
+    melody: [[0, 2, 0.7, 'o'], [7, 1, 0.6, 'f'], [12, 2, 0.6, 'o']],
+    drums: { kick: [[0, 0.6], [7, 0.4], [10, 0.5]], snare: [[4, 0.6], [12, 0.6], [15, 0.18]], rim: [],
+             hat: [[0, 0.4], [1, 0.18], [2, 0.3], [3, 0.18], [4, 0.4], [5, 0.18], [6, 0.3], [7, 0.18], [8, 0.4], [9, 0.18], [10, 0.3], [11, 0.18], [12, 0.4], [13, 0.18], [14, 0.3], [15, 0.18]] } },
+  bossa: { label: '보사노바', swing: 0,
+    chord: [[0, 3, 0.5, 'all'], [3, 3, 0.42, 'all'], [6, 2, 0.42, 'all'], [10, 3, 0.48, 'all'], [13, 3, 0.42, 'all']],
+    bass: [[0, 6, 0.5, 'r'], [6, 2, 0.38, 'f'], [8, 6, 0.48, 'f'], [14, 2, 0.38, 'r']],
+    melody: [[0, 4, 0.55, 'o'], [8, 4, 0.5, 'f']],
+    drums: { kick: [[0, 0.4], [6, 0.28], [8, 0.4], [14, 0.28]], snare: [], rim: [[0, 0.4], [3, 0.4], [6, 0.4], [10, 0.4], [13, 0.4]],
+             hat: [[0, 0.25], [2, 0.2], [4, 0.25], [6, 0.2], [8, 0.25], [10, 0.2], [12, 0.25], [14, 0.2]] } },
+  shuffle: { label: '셔플', swing: 0.667,
+    chord: [[4, 3, 0.55, 'all'], [12, 3, 0.55, 'all'], [10, 1, 0.38, 'all']],
+    bass: [[0, 2, 0.55, 'r'], [2, 2, 0.4, 'r'], [4, 2, 0.5, 'f'], [6, 2, 0.4, 'f'], [8, 2, 0.5, '6'], [10, 2, 0.4, '6'], [12, 2, 0.5, 'f'], [14, 2, 0.4, 'f']],
+    melody: [],
+    drums: { kick: [[0, 0.55], [8, 0.55]], snare: [[4, 0.55], [12, 0.55]], rim: [],
+             hat: [[0, 0.5], [2, 0.35], [4, 0.5], [6, 0.35], [8, 0.5], [10, 0.35], [12, 0.5], [14, 0.35]] } }
+};
+const STYLE_IDS = Object.keys(STYLES);
 function startsOnTonic(p) { return p.steps[0][0] === 0; }
 /* Per-progression survey: d = how hard it is to tell by ear (1 easy – 5 hard); keys (pitch classes of the tonic)
    and bpm are where it commonly turns up. d builds the presets. keys/bpm are only offered as a suggestion in solo
@@ -298,7 +365,7 @@ if (typeof module !== 'undefined') {
     NOTE_PC, QUALITIES, POOL, FLAT_NAMES, SHARP_NAMES, LEVELS, PROG_INFO, ROMAN,
     parseChord, keyObj, keysFor, keyByName, keyLabel, solfege, modeWord, chordsFor, chordText, rootName,
     startsOnTonic, poolFor, keyChoices, randomIn, randomBpm, makeProgQuestion, makeKeyQuestion,
-    paletteFor, sameSteps, romanOf, voiceLeading, assign, typicalFor, progDifficulty,
+    paletteFor, sameSteps, romanOf, voiceLeading, assign, typicalFor, progDifficulty, parseProgressionText, STYLES, STYLE_IDS,
     setAccidental: (a) => { ACCIDENTAL = a; }
   };
 }

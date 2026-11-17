@@ -113,12 +113,13 @@ async function nextQuestion() {
   state.q = q;
   state.phase = 'asking';
   state.last = { id: q.prog.id, key: q.mode + q.key.id };
+  state.qStyle = state.style === 'random' ? STYLE_IDS[Math.floor(Math.random() * STYLE_IDS.length)] : state.style;
   chords = q.chords;
   prepareVoicing(chords);
   const lvNow = s.kind === 'review' ? null : LEVELS[state.level];
   bpm = lvNow ? randomIn(lvNow.bpm) : (s.kind === 'review' || state.bpmMode === 'random' ? randomBpm() : fixedBpm);
   $('#key').textContent = q.type === 'key' ? '키 ?' : keyLabel(q.key) + ' ' + modeWord(q.mode);
-  $('#bpmv').textContent = bpm + ' BPM';
+  $('#bpmv').textContent = bpm + ' BPM · ' + STYLES[currentStyle()].label;
   renderChart();
   $('#chart').classList.add('masked');
   const isKey = q.type === 'key';

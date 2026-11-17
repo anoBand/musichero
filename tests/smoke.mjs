@@ -97,6 +97,47 @@ try {
   await page.click('#p-quit');
   check(await ev('!playing'), 'leaving stops the sound');
 
+  // every backing style renders sound in every part, and the quiz shows the style
+  const levels = await ev(`(async () => {
+    const kit = await loadKit();
+    const q = makeProgQuestion('major', null, 0, 'axis');
+    prepareVoicing(q.chords);
+    const peak = (b) => { const d = b.getChannelData(0); let m = 0; for (let i = 0; i < d.length; i++) m = Math.max(m, Math.abs(d[i])); return m; };
+    const out = {};
+    for (const id of STYLE_IDS) {
+      const st = renderStems(q.chords, 100, kit, id);
+      out[id] = Math.min(peak(st.bufs.chord), peak(st.bufs.bass), STYLES[id].melody.length ? peak(st.bufs.melody) : 1, peak(drumsFor(4, 100, id)));
+    }
+    return out;
+  })()`);
+  check(Object.values(levels).every((v) => v > 0.02 && v < 4), 'every style makes sound ' + JSON.stringify(levels));
+  await page.click('#m-prog');
+  await page.click('#styles [data-s="bossa"]');
+  await page.click('#start');
+  await page.waitForTimeout(400);
+  check(await ev("document.querySelector('#bpmv').textContent.endsWith('보사노바') && currentStyle() === 'bossa'"), 'quiz uses the chosen style');
+  await page.click('#quit');
+  await page.click('#m-prog');
+  await page.click('#styles [data-s="pop"]');
+  await page.click('#setup-back');
+
+  // typed progression and style change in practice
+  await page.click('#m-practice');
+  await page.click('#p-prog-btn');
+  await page.fill('#custom-text', 'C Hm F');
+  await page.click('#custom-go');
+  check(await ev("document.querySelector('#custom-msg').classList.contains('err') && !document.querySelector('#sheet').hidden"), 'typed progression: error shown');
+  await page.fill('#custom-text', 'Dm7 G7 Cmaj7 A7/C# Dm7 G7 C6 C6');
+  await page.click('#custom-go');
+  await page.click('#p-play');
+  await page.waitForTimeout(2800);
+  check(await ev("playing && current.bars === 8 && document.querySelectorAll('#p-chart .bar').length === 8"), 'typed 8-bar progression plays');
+  check(await fits(), 'practice with 8 bars fits one phone screen');
+  await page.click('#p-style');
+  await page.waitForTimeout(200);
+  check(await ev("playing && current.style === practice.style && practice.style !== 'pop'"), 'changing style keeps playing');
+  await page.click('#p-quit');
+
   // records, theme, persistence
   await page.click('#cal');
   check(await ev("document.querySelectorAll('#heat button').length") === 17 * 7, 'activity grid');

@@ -96,6 +96,18 @@ h2 { margin: 0; font: 500 0.75rem/1 var(--font-data); letter-spacing: 0.06em; te
 .seg button + button { border-left: 1px solid var(--line); }
 .seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); }
 .custom { display: grid; gap: 22px; }
+.p-extra { display: flex; flex-wrap: wrap; gap: 6px; }
+.p-extra .chip { min-height: 34px; font-size: 0.8rem; }
+.custom-in { display: grid; gap: 6px; padding: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.custom-in .lbl { font: 500 0.75rem/1 var(--font-data); letter-spacing: 0.06em; color: var(--muted); }
+.custom-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.custom-row input { min-height: 46px; min-width: 0; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: 500 1rem/1 var(--font-data); }
+.custom-row .primary { min-height: 46px; width: auto; padding: 0 18px; }
+#custom-msg.err { color: var(--danger); }
+.chart.many { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.chart.many .bar, .chart.big.many .bar { min-height: 3.2rem; }
+.chart.many .sym { font-size: 1.25rem; }
+.sym .sl { font-size: 0.55em; font-weight: 500; margin-left: 0.04em; }
 .remind-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 .remind-row .seg button { padding: 0 14px; font-size: 0.85rem; font-weight: 500; }
 #remind-time { min-height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: 500 1rem/1 var(--font-data); }
@@ -294,6 +306,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .p-controls { display: grid; gap: 10px; }
 .keygrid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
 .keygrid .chip { padding: 0; min-height: 40px; font: 600 0.95rem/1 var(--font-body); }
+.keygrid.off { display: none; }
 .keygrid .chip[data-k="random"] { grid-column: 1 / -1; font: 500 0.85rem/1 var(--font-body); }
 .picker, .prow {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 0 12px;

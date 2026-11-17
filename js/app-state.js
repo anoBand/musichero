@@ -31,11 +31,11 @@ let beatTimer = null;
 const layers = { chord: true, bass: true, melody: true, drums: true };
 const state = {
   view: 'home', session: { kind: 'prog' }, phase: 'idle',
-  kit: 'piano', amode: 'choice', level: 'easy', setting: 'major', keyPc: null, bpmMode: 'random',
+  kit: 'piano', style: 'pop', qStyle: null, amode: 'choice', level: 'easy', setting: 'major', keyPc: null, bpmMode: 'random',
   q: null, asked: 0, right: 0, streak: 0, last: null, nowIdx: -1
 };
 if (LEVELS[Store.data.pref.level] || Store.data.pref.level === 'custom') state.level = Store.data.pref.level;
-const practice = { progId: 'axis', keyPc: 0, bpm: 100, minutes: 10, sec: 0, unsaved: 0 };
+const practice = { style: 'pop', custom: null, progId: 'axis', keyPc: 0, bpm: 100, minutes: 10, sec: 0, unsaved: 0 };
 
 function prepareVoicing(chs) {
   const voiced = voiceLeading(chs);
@@ -52,12 +52,14 @@ function chartEl() { return inPractice() ? $('#p-chart') : $('#chart'); }
 function renderChart() {
   const el = chartEl();
   el.textContent = '';
+  el.classList.toggle('many', chords.length > 4);
   chords.forEach((c) => {
     const bar = document.createElement('div');
     bar.className = 'bar';
     const sym = document.createElement('span'); sym.className = 'sym';
     const root = document.createElement('span'); root.textContent = c.root; sym.appendChild(root);
     if (c.quality) { const q = document.createElement('span'); q.className = 'q'; q.textContent = c.quality; sym.appendChild(q); }
+    if (c.slash) { const sl = document.createElement('span'); sl.className = 'sl'; sl.textContent = '/' + c.slash; sym.appendChild(sl); }
     const qm = document.createElement('span'); qm.className = 'qm'; qm.textContent = '?';
     const beats = document.createElement('span'); beats.className = 'beats';
     for (let b = 0; b < 4; b++) beats.appendChild(document.createElement('i'));
