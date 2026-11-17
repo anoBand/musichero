@@ -40,8 +40,17 @@ push하면 GitHub Actions에서 두 테스트가 자동으로 돌아갑니다.
 
 웹 버전은 빌드가 필요 없는 정적 파일입니다. 저장소 폴더를 그대로 웹 서버(Nginx, Caddy 등)로 내보내면 됩니다.
 
-- 서버는 **가장 높은 `v*` 태그**만 받아갑니다: `scripts/deploy.sh /srv/musichero`
-- 처음 실행하면 저장소를 받아오고, 다음부터는 새 태그가 있을 때만 바꿉니다. cron으로 주기 실행하면 됩니다.
+- 서버는 **가장 높은 `vX.Y.Z` 태그**만 받아갑니다. `v1.0.0-beta` 같은 태그는 건너뜁니다.
+- 배포 스크립트는 **배포 폴더 밖에 복사해서** 실행합니다. 배포 폴더는 버전이 바뀔 때마다 통째로 바뀌기 때문입니다.
+
+```
+cp scripts/deploy.sh ~/musichero-deploy.sh
+~/musichero-deploy.sh ~/musichero          # 처음: 저장소를 받아 최신 릴리스로, 이후: 새 릴리스가 있을 때만 바꿈
+crontab -e                                 # 10분마다:
+*/10 * * * * $HOME/musichero-deploy.sh $HOME/musichero >> $HOME/musichero-deploy.log 2>&1
+```
+
+- 웹 서버는 이 폴더를 그대로 내보내되, `.git`과 웹에 필요 없는 폴더(`android`, `tests`, `scripts`, `.github`, `package*.json`)는 막아 둡니다.
 - 서버에서 파일을 직접 고치지 않습니다. 수정은 모두 저장소에 push합니다.
 - 오프라인 동작(서비스 워커)은 HTTPS에서만 됩니다.
 
