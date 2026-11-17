@@ -60,6 +60,17 @@ body {
   padding-right: max(16px, env(safe-area-inset-right, 0px));
 }
 body.quizzing { padding-block: 12px 12px; }
+/* the quiz takes the whole screen height: hint, result and buttons rest at the bottom, within thumb reach */
+#quiz:not([hidden]) {
+  display: flex; flex-direction: column;
+  min-height: calc(100vh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  min-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+}
+#quiz > .opts { margin-bottom: auto; }
+/* chord-quality quiz: the chord and its choices sit in the middle of the free space */
+#quiz.qual > .chart { margin-top: auto; }
+#quiz.qual .chart.single .bar { min-height: 7.5rem; }
+#quiz.qual .chart.single .sym, #quiz.qual .chart.single .qm { font-size: 3rem; }
 .app { max-width: 36rem; margin: 0 auto; }
 .view { display: grid; gap: 20px; }
 .view.tight { gap: 10px; }
@@ -78,7 +89,7 @@ h2 { margin: 0; font: 500 0.75rem/1 var(--font-data); letter-spacing: 0.06em; te
 /* today */
 .today { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--bar); border-radius: 10px; padding: 16px; display: grid; gap: 14px; }
 .today-top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; }
-.icon-btn { width: 40px; min-height: 40px; padding: 0; display: grid; place-items: center; }
+.ghost.icon-btn { width: 40px; min-height: 40px; padding: 0; display: grid; place-items: center; }
 .icon-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 /* sun while light, moon while dark */
 #theme[aria-pressed="true"] .i-sun, #theme[aria-pressed="false"] .i-moon { display: none; }
@@ -216,12 +227,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .primary svg, .listen svg { width: 15px; height: 15px; fill: currentColor; }
 
 /* top bar shared by quiz and practice */
-.topbar { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; align-items: center; gap: 4px 6px; }
+/* a wrapping row, so buttons hidden in some modes leave no gap behind */
+.topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.topbar > .meta { flex: 1 1 0; min-width: 0; }
 .topbar .ghost { padding: 0 9px; }
 .meta { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
 .meta .key { font: 700 1.25rem/1.15 var(--font-display); letter-spacing: -0.01em; }
 .meta .tempo { font: 500 0.85rem/1.2 var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
-.score { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 2px 14px; font: 500 0.75rem/1.3 var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
+.score { flex: 1 0 100%; display: flex; flex-wrap: wrap; gap: 2px 14px; font: 500 0.75rem/1.3 var(--font-data); color: var(--muted); font-variant-numeric: tabular-nums; }
 .score b { color: var(--ink); font-weight: 500; }
 .ghost {
   min-height: 36px; padding: 0 12px; cursor: pointer;

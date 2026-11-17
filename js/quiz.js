@@ -126,6 +126,7 @@ async function nextQuestion() {
   $('#bpmv').textContent = isQual ? '' : bpm + ' BPM · ' + STYLES[currentStyle()].label;
   /* a single chord has no bass or melody part to switch */
   $$('#quiz .layer-btn').forEach((b) => { b.hidden = isQual; });
+  $('#quiz').classList.toggle('qual', isQual);
   renderChart();
   $('#chart').classList.add('masked');
   const isKey = q.type === 'key';
