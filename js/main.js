@@ -2,6 +2,7 @@
 /* ---- wiring ---- */
 $('#m-prog').addEventListener('click', () => openSetup('prog'));
 $('#m-key').addEventListener('click', () => openSetup('key'));
+$('#m-qual').addEventListener('click', () => openSetup('qual'));
 $('#m-practice').addEventListener('click', openPractice);
 $('#m-review').addEventListener('click', () => startSession('review'));
 $('#setup-back').addEventListener('click', showHome);

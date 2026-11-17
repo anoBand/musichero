@@ -1,5 +1,6 @@
 /* Quiz flow: asking, answering (multiple choice and written), switching between options. */
 /* ---- quiz ---- */
+const LETTERS = 'ABCDEFGHIJKL';
 function updateScore() {
   const el = $('#score');
   el.textContent = '';
@@ -72,16 +73,16 @@ function submitWritten() {
 function renderOptions() {
   const el = $('#opts');
   el.textContent = '';
-  el.className = 'opts' + (state.q.type === 'key' && state.q.free ? ' notes' : '');
+  el.className = 'opts' + (state.q.type === 'key' && state.q.free ? ' notes' : '') + (state.q.type === 'qual' ? ' qual' : '');
   state.q.options.forEach((o, i) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'opt';
     b.dataset.i = String(i);
-    const ltr = document.createElement('span'); ltr.className = 'ltr'; ltr.textContent = 'ABCD'.charAt(i);
+    const ltr = document.createElement('span'); ltr.className = 'ltr'; ltr.textContent = LETTERS.charAt(i);
     const body = document.createElement('span');
     const chs = document.createElement('span'); chs.className = 'chs';
-    (state.q.type === 'key' ? [o.label] : o.chords.map((c) => c.root + c.quality)).forEach((txt) => {
+    (state.q.type === 'prog' ? o.chords.map((c) => c.root + c.quality) : [o.label]).forEach((txt) => {
       const s = document.createElement('span'); s.textContent = txt; chs.appendChild(s);
     });
     const rm = document.createElement('span'); rm.className = 'rm'; rm.textContent = o.sub;
@@ -101,25 +102,30 @@ async function nextQuestion() {
     if (!due.length) { showHome(); return; }
     const it = due[0];
     s.item = it;
-    q = it.t === 'key' ? makeKeyQuestion(it.mode, null, it.id) : makeProgQuestion(it.mode, null, null, it.id);
+    q = it.t === 'key' ? makeKeyQuestion(it.mode, null, it.id)
+      : it.t === 'qual' ? makeQualQuestion('hard', null, it.id)
+      : makeProgQuestion(it.mode, null, null, it.id);
   } else {
     const lv = LEVELS[state.level] || null;
     const setting = lv ? lv.setting : state.setting;
-    q = s.kind === 'key'
-      ? makeKeyQuestion(setting, state.last, null, lv, free)
+    q = s.kind === 'key' ? makeKeyQuestion(setting, state.last, null, lv, free)
+      : s.kind === 'qual' ? makeQualQuestion(state.level, state.last)
       : makeProgQuestion(setting, state.last, lv ? null : state.keyPc, null, lv);
     if (free && q.type === 'prog') { q.free = true; q.palette = paletteFor(q, lv); }
   }
   state.q = q;
   state.phase = 'asking';
-  state.last = { id: q.prog.id, key: q.mode + q.key.id };
+  state.last = { id: q.prog ? q.prog.id : q.quality, key: q.mode + q.key.id };
   state.qStyle = state.style === 'random' ? STYLE_IDS[Math.floor(Math.random() * STYLE_IDS.length)] : state.style;
   chords = q.chords;
   prepareVoicing(chords);
   const lvNow = s.kind === 'review' ? null : LEVELS[state.level];
   bpm = lvNow ? randomIn(lvNow.bpm) : (s.kind === 'review' || state.bpmMode === 'random' ? randomBpm() : fixedBpm);
-  $('#key').textContent = q.type === 'key' ? '키 ?' : keyLabel(q.key) + ' ' + modeWord(q.mode);
-  $('#bpmv').textContent = bpm + ' BPM · ' + STYLES[currentStyle()].label;
+  const isQual = q.type === 'qual';
+  $('#key').textContent = q.type === 'key' ? '키 ?' : isQual ? keyLabel(q.key) + ' 코드 · 어떤 종류?' : keyLabel(q.key) + ' ' + modeWord(q.mode);
+  $('#bpmv').textContent = isQual ? '' : bpm + ' BPM · ' + STYLES[currentStyle()].label;
+  /* a single chord has no bass or melody part to switch */
+  $$('#quiz .layer-btn').forEach((b) => { b.hidden = isQual; });
   renderChart();
   $('#chart').classList.add('masked');
   const isKey = q.type === 'key';
@@ -170,16 +176,19 @@ function answer(i) {
     const tag = b.querySelector('.tag');
     b.classList.remove('sel');
     if (isKey) b.querySelector('.rm').textContent = o.degree;
-    if (o.id === q.answerId) { b.classList.add('correct'); if (ok) b.classList.add('fx-pop'); tag.textContent = '정답'; correctLetter = q.free ? o.label : 'ABCD'.charAt(j); }
+    if (o.id === q.answerId) { b.classList.add('correct'); if (ok) b.classList.add('fx-pop'); tag.textContent = '정답'; correctLetter = q.free || q.type === 'qual' ? o.label : LETTERS.charAt(j); }
     else if (j === i) { b.classList.add('wrong', 'fx-shake'); tag.textContent = '내 선택'; }
     else { b.classList.add('dim'); }
   });
   $('#chart').classList.remove('masked');
+  const isQual = q.type === 'qual';
   const keyText = keyLabel(q.key) + ' ' + modeWord(q.mode);
-  $('#key').textContent = keyText;
+  const chordName = q.chords[0].root + q.chords[0].quality;
+  $('#key').textContent = isQual ? chordName : keyText;
 
   const detail = isKey
     ? '으뜸음 ' + keyLabel(q.key) + ' · ' + keyText + ' · ' + q.prog.roman
+    : isQual ? chordName + ' · ' + QUAL_FORMULA[q.quality]
     : q.prog.roman + (q.prog.name ? ' · ' + q.prog.name : '');
   let msg = ok ? '정답입니다 +' + gain + ' XP · ' + detail : '아쉬워요 +' + XP_WRONG + ' XP · 정답은 ' + correctLetter + ' (' + detail + ')';
   if (doneQuests.length) msg += ' · 퀘스트 완료: ' + doneQuests.join(', ');
@@ -199,6 +208,7 @@ function answer(i) {
   $('#next').hidden = false;
   $('#switch-hint').textContent = isKey
     ? '보기를 누르면 그 음을 다시 들어볼 수 있어요.'
+    : isQual ? '다른 보기를 누르면 같은 근음의 그 종류 코드를 들어볼 수 있어요.'
     : '다른 보기를 누르면 바로 바꿔 들을 수 있고, 코드 칸을 누르면 그 마디부터 재생돼요.';
   $('#switch-hint').hidden = false;
   state.nowIdx = isKey ? -1 : q.options.findIndex((o) => o.id === q.answerId);
@@ -218,7 +228,7 @@ function markNow() {
     const on = j === state.nowIdx;
     btns[j].classList.toggle('now', on);
     if (on) btns[j].setAttribute('aria-current', 'true'); else btns[j].removeAttribute('aria-current');
-    btns[j].querySelector('.ltr').textContent = on ? '▶' : 'ABCD'.charAt(j);
+    btns[j].querySelector('.ltr').textContent = on ? '▶' : LETTERS.charAt(j);
   }
 }
 function switchTo(i) {

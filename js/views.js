@@ -136,11 +136,17 @@ function showHome() {
 }
 function openSetup(kind) {
   state.session = { kind: kind };
-  $('#setup-title').textContent = kind === 'key' ? '키 맞추기' : '코드 진행 퀴즈';
+  $('#setup-title').textContent = kind === 'key' ? '키 맞추기' : kind === 'qual' ? '코드 종류 맞추기' : '코드 진행 퀴즈';
   $('#setup-lead').textContent = kind === 'key'
     ? '배킹이 도는 동안 보기의 음을 눌러 들어보고, 가장 집처럼 들리는 으뜸음을 고르세요.'
+    : kind === 'qual' ? '코드 하나를 한 번에, 한 음씩, 다시 한 번에 들려줘요. 어떤 종류의 코드인지 고르세요.'
     : '배킹을 듣고 어떤 코드 진행인지 4개 보기 중에서 맞춰보세요.';
   $('#key-field').hidden = kind === 'key';
+  /* one chord, no backing: tempo, style, answer mode and parts don't apply */
+  const qual = kind === 'qual';
+  ['#amode', '#styles', '#layers'].forEach((sel) => { $(sel).closest('.field').hidden = qual; });
+  $('#levels [data-v="custom"]').hidden = qual;
+  if (qual && state.level === 'custom') state.level = 'hard';
   renderLevel();
   renderAmode();
   show('setup');
@@ -157,8 +163,14 @@ function renderLevel() {
     b.setAttribute('aria-pressed', String(b.dataset.v === state.level));
   });
   const lv = LEVELS[state.level];
-  $('#custom-fields').hidden = !!lv;
   const note = $('#level-note');
+  if (state.session.kind === 'qual') {
+    $('#custom-fields').hidden = true;
+    note.hidden = false;
+    note.textContent = (QUAL_SETS[state.level] || QUAL_SETS.hard).map((x) => QUAL_NAMES[x]).join(', ') + ' · 정답마다 ' + (lv ? lv.xp : XP_RIGHT) + ' XP';
+    return;
+  }
+  $('#custom-fields').hidden = !!lv;
   note.hidden = !lv;
   if (!lv) return;
   const count = (mode) => poolFor(mode, lv).length;

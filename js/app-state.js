@@ -53,6 +53,7 @@ function renderChart() {
   const el = chartEl();
   el.textContent = '';
   el.classList.toggle('many', chords.length > 4);
+  el.classList.toggle('single', chords.length === 1);
   chords.forEach((c) => {
     const bar = document.createElement('div');
     bar.className = 'bar';

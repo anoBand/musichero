@@ -105,6 +105,13 @@ h2 { margin: 0; font: 500 0.75rem/1 var(--font-data); letter-spacing: 0.06em; te
 .custom-row .primary { min-height: 46px; width: auto; padding: 0 18px; }
 #custom-msg.err { color: var(--danger); }
 .chart.many { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.chart.single { grid-template-columns: minmax(0, 1fr); }
+.chart.single .bar { min-height: 4.6rem; justify-items: center; align-content: center; }
+.chart.single .sym, .chart.single .qm { font-size: 2.2rem; }
+.chart.single .beats { display: none; }
+.opts.qual { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.opts.qual .opt { min-height: 50px; }
+.opts.qual .opt .chs { font-size: 0.95rem; }
 .chart.many .bar, .chart.big.many .bar { min-height: 3.2rem; }
 .chart.many .sym { font-size: 1.25rem; }
 .sym .sl { font-size: 0.55em; font-weight: 500; margin-left: 0.04em; }

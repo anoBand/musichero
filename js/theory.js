@@ -122,6 +122,24 @@ const STYLES = {
              hat: [[0, 0.5], [2, 0.35], [4, 0.5], [6, 0.35], [8, 0.5], [10, 0.35], [12, 0.5], [14, 0.35]] } }
 };
 const STYLE_IDS = Object.keys(STYLES);
+/* Chord-quality quiz: one chord, name its kind. The sets grow with the difficulty preset. */
+const QUAL_NAMES = { '': '메이저', 'm': '마이너', '7': '도미넌트 7', 'maj7': '메이저 7', 'm7': '마이너 7',
+  'dim': '디미니시', 'aug': '오그먼트', 'sus4': '서스 4', 'm7b5': '하프 디미니시' };
+const QUAL_FORMULA = { '': '1 3 5', 'm': '1 ♭3 5', '7': '1 3 5 ♭7', 'maj7': '1 3 5 7', 'm7': '1 ♭3 5 ♭7',
+  'dim': '1 ♭3 ♭5', 'aug': '1 3 ♯5', 'sus4': '1 4 5', 'm7b5': '1 ♭3 ♭5 ♭7' };
+const QUAL_SETS = { easy: ['', 'm'], mid: ['', 'm', '7', 'maj7', 'm7'], hard: ['', 'm', '7', 'maj7', 'm7', 'dim', 'aug', 'sus4', 'm7b5'] };
+/* levelId picks the set (anything else: the full set); forced asks for one quality (review) */
+function makeQualQuestion(levelId, last, forced) {
+  const set = QUAL_SETS[levelId] || QUAL_SETS.hard;
+  const has = forced !== undefined && forced !== null;
+  const all = has && set.indexOf(forced) < 0 ? set.concat([forced]) : set;
+  const quality = has ? forced : pickOther(set, (x) => last && x === last.id);
+  const key = keyObj('major', Math.floor(Math.random() * 12));
+  const make = (qq) => parseChord(key.name + qq);
+  const options = all.map((qq) => ({ id: qq, label: QUAL_NAMES[qq], sub: QUAL_FORMULA[qq], chords: [make(qq)] }));
+  return { type: 'qual', mode: 'major', key: key, quality: quality, prog: null, answerId: quality, itemId: quality,
+    options: options, chords: [make(quality)] };
+}
 function startsOnTonic(p) { return p.steps[0][0] === 0; }
 /* Per-progression survey: d = how hard it is to tell by ear (1 easy – 5 hard); keys (pitch classes of the tonic)
    and bpm are where it commonly turns up. d builds the presets. keys/bpm are only offered as a suggestion in solo
@@ -365,7 +383,7 @@ if (typeof module !== 'undefined') {
     NOTE_PC, QUALITIES, POOL, FLAT_NAMES, SHARP_NAMES, LEVELS, PROG_INFO, ROMAN,
     parseChord, keyObj, keysFor, keyByName, keyLabel, solfege, modeWord, chordsFor, chordText, rootName,
     startsOnTonic, poolFor, keyChoices, randomIn, randomBpm, makeProgQuestion, makeKeyQuestion,
-    paletteFor, sameSteps, romanOf, voiceLeading, assign, typicalFor, progDifficulty, parseProgressionText, STYLES, STYLE_IDS,
+    paletteFor, sameSteps, romanOf, voiceLeading, assign, typicalFor, progDifficulty, parseProgressionText, STYLES, STYLE_IDS, makeQualQuestion, QUAL_SETS, QUAL_NAMES,
     setAccidental: (a) => { ACCIDENTAL = a; }
   };
 }

@@ -158,3 +158,24 @@ test('typed progressions', () => {
   const v = T.voiceLeading(g9);
   v.forEach((notes, i) => assert.deepEqual(new Set(notes.map((n) => n % 12)), new Set(g9[i].intervals.map((x) => (g9[i].pc + x) % 12))));
 });
+
+test('chord-quality questions', () => {
+  for (const lv of ['easy', 'mid', 'hard', 'custom']) {
+    const set = T.QUAL_SETS[lv] || T.QUAL_SETS.hard;
+    for (let i = 0; i < 300; i++) {
+      const q = T.makeQualQuestion(lv, null);
+      assert.deepEqual(q.options.map((o) => o.id), set);
+      assert.ok(set.includes(q.answerId));
+      assert.equal(q.chords[0].quality, q.quality);
+      q.options.forEach((o) => { assert.ok(o.chords[0], o.id); assert.ok(T.QUAL_NAMES[o.id] !== undefined); });
+    }
+  }
+  const major = T.makeQualQuestion('hard', null, '');
+  assert.equal(major.answerId, '');
+  const outside = T.makeQualQuestion('easy', null, 'm7b5');
+  assert.ok(outside.options.some((o) => o.id === 'm7b5'), 'a review item outside the set is still offered');
+  let repeats = 0;
+  let last = null;
+  for (let i = 0; i < 200; i++) { const q = T.makeQualQuestion('mid', last); if (last && q.quality === last.id) repeats++; last = { id: q.quality }; }
+  assert.equal(repeats, 0, 'never the same kind twice in a row');
+});

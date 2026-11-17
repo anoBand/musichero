@@ -351,9 +351,27 @@ function unlockScreen() {
   wakeLock = null;
 }
 
+/* chord-quality quiz: the chord struck, then broken upward note by note, then struck again */
+async function playChordDemo(c) {
+  if (!ensureAudio()) return;
+  const token = ++playToken;
+  let kit;
+  try { kit = await loadKit(); } catch (e) { playbackStatus('악기 소리를 불러오지 못했어요. 인터넷 연결을 확인해 주세요.'); return; }
+  if (token !== playToken) return;
+  haltSound();
+  const t = ctx.currentTime + 0.02;
+  const n = c.midi.length;
+  c.midi.forEach((m) => playOne(kit.chord, m, t, 1.3, 0.42));
+  c.midi.forEach((m, j) => playOne(kit.chord, m, t + 1.7 + j * 0.32, 0.45, 0.62));
+  const t2 = t + 1.7 + n * 0.32 + 0.3;
+  c.midi.forEach((m) => playOne(kit.chord, m, t2, 1.4, 0.42));
+  setActive(0, -1);
+  setTimeout(() => { if (token === playToken) setActive(-1, -1); }, (t2 + 1.4 - ctx.currentTime) * 1000);
+}
 /* A short count-in at the new tempo (2 beats in a quiz, 4 in practice), then the loop from the given bar. */
 async function start(opts) {
   opts = opts || {};
+  if (!inPractice() && state.q && state.q.type === 'qual') { playChordDemo(chords[0]); return; }
   const token = ++playToken;
   if (!ensureAudio()) { playbackStatus('이 브라우저에서는 소리를 낼 수 없어요.'); return; }
   let kit;

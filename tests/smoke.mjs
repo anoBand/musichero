@@ -138,6 +138,27 @@ try {
   check(await ev("playing && current.style === practice.style && practice.style !== 'pop'"), 'changing style keeps playing');
   await page.click('#p-quit');
 
+  // chord-quality quiz
+  await page.click('#m-qual');
+  check(await ev("document.querySelector('#amode').closest('.field').hidden && document.querySelector('#levels [data-v=custom]').hidden"), 'quality quiz setup hides what does not apply');
+  await page.click('#levels [data-v="hard"]');
+  await page.click('#start');
+  await page.waitForTimeout(300);
+  check(await ev("document.querySelectorAll('.opt').length === 9 && oneShots.length >= 3"), 'quality quiz plays the chord and offers nine kinds');
+  check(await fits(), 'quality quiz fits one phone screen');
+  const qa = await answerIdx();
+  await page.click(`.opt >> nth=${qa}`);
+  check(await ev("document.querySelector('#status').textContent.startsWith('정답') && /^[A-G]/.test(document.querySelector('#key').textContent)"), 'quality answer is graded and the chord named');
+  await page.click(`.opt >> nth=${(qa + 1) % 9}`);
+  await page.waitForTimeout(150);
+  check(await ev("chords[0].quality === state.q.options[state.nowIdx].id && oneShots.length >= 3"), 'other kinds can be heard after answering');
+  await page.click('#next');
+  await page.waitForTimeout(200);
+  const wrongQ = await answerIdx();
+  await page.click(`.opt >> nth=${(wrongQ + 1) % 9}`);
+  check(await ev("Store.data.review.some((r) => r.t === 'qual')"), 'a wrong kind goes to review');
+  await page.click('#quit');
+
   // records, theme, persistence
   await page.click('#cal');
   check(await ev("document.querySelectorAll('#heat button').length") === 17 * 7, 'activity grid');
