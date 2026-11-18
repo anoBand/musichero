@@ -84,6 +84,17 @@
       </div>
     </div>
 
+    <div class="panel" id="account-panel">
+      <div class="field">
+        <span class="lbl">계정</span>
+        <div class="account-row">
+          <span id="account-text">로그인하면 기록이 여러 기기에서 이어져요.</span>
+          <button class="ghost" type="button" id="account-btn">구글로 로그인</button>
+        </div>
+        <p class="note" id="account-note" hidden></p>
+      </div>
+    </div>
+
     <p class="note" id="store-note" hidden>이 환경에서는 기록을 저장할 수 없어서, 화면을 닫으면 사라져요.</p>
     <div class="foot">
       <div class="seg" id="acc" role="group" aria-label="조성 표기">
@@ -254,11 +265,13 @@
 <script src="js/theory.js"></script>
 <script src="js/progress.js"></script>
 <script src="js/ledger.js"></script>
+<script src="js/sync.js"></script>
 <script src="js/app-state.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/views.js"></script>
 <script src="js/quiz.js"></script>
 <script src="js/main.js"></script>
 <script src="js/native.js"></script>
+<script src="js/cloud.js"></script>
 </body>
 </html>

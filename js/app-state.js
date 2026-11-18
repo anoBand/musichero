@@ -33,13 +33,30 @@ const Store = {
     const e = logAnswer(this.doc, k, a, Date.now());
     const done = applyEvent(this.data, e);
     this.save();
+    this.changed();
     return done;
   },
-  setPref(key, value) { setPref(this.doc, key, value, Date.now()); this.save(); },
+  setPref(key, value) { setPref(this.doc, key, value, Date.now()); this.save(); this.changed(); },
   /* 기록 초기화: settings stay */
-  reset() { resetDoc(this.doc, Date.now()); this.data = derive(this.doc); this.save(); },
-  /* takes in another copy of the records (from the server, later) */
-  merge(other) { this.doc = mergeDocs(this.doc, other); this.data = derive(this.doc); this.save(); }
+  reset() { resetDoc(this.doc, Date.now()); this.data = derive(this.doc); this.save(); this.changed(); },
+  /* takes in what a sync brought back (sync.js) */
+  merge(remote, sync) {
+    this.doc = mergeDocs(this.doc, remote);
+    if (sync) this.doc.sync = sync;
+    this.data = derive(this.doc);
+    this.save();
+  },
+  /* signing out: the records live on in the account, so this device starts over (settings stay) */
+  forget() {
+    const doc = freshDoc();
+    doc.pref = this.doc.pref;
+    doc.prefAt = this.doc.prefAt;
+    this.doc = doc;
+    this.data = derive(doc);
+    this.save();
+  },
+  /* set by cloud.js: called after anything that should be uploaded */
+  changed() {}
 };
 Store.load();
 ACCIDENTAL = Store.data.pref.acc === 'sharp' ? 'sharp' : 'flat';

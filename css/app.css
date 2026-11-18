@@ -122,6 +122,9 @@ h2 { margin: 0; font: 500 0.75rem/1 var(--font-data); letter-spacing: 0.06em; te
 .remind-row .seg button { padding: 0 14px; font-size: 0.85rem; font-weight: 500; }
 #remind-time { min-height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); font: 500 1rem/1 var(--font-data); }
 #remind-time:disabled { opacity: 0.5; }
+.account-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+#account-text { min-width: 0; flex: 1 1 12rem; font-size: 0.9rem; overflow-wrap: anywhere; }
+#account-btn { flex: none; }
 .credit { margin: 0; font: 400 0.68rem/1.3 var(--font-data); color: var(--muted); text-align: center; }
 
 /* activity calendar */

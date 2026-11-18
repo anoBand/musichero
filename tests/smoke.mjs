@@ -142,6 +142,31 @@ try {
   check(await ev("document.documentElement.dataset.theme === 'dark' && Store.data.days[today()].q >= 3"), 'theme and progress survive a reload');
   check(await ev("Store.data.xp >= 1000 && Store.doc.events.length === Store.data.days[today()].q"), 'answers are kept as log events');
 
+  // account: the Firebase SDK loads from the app's own files; sign-in and sync run against a stand-in server
+  await page.click('#rec-back').catch(() => {});
+  check(await ev("!document.querySelector('#account-panel').hidden && document.querySelector('#account-btn').textContent === '구글로 로그인'"), 'account panel offers Google sign-in');
+  check(await ev("Cloud.load().then(() => !!Cloud.auth && Cloud.user === null)"), 'Firebase SDK loads; nobody signed in');
+  await ev(`(() => {
+    const db = { user: null, bases: {}, events: {} };
+    let clock = 1;
+    window.fakeDb = db;
+    Cloud.server = () => ({
+      async getUser() { return db.user; }, async setUser(u) { db.user = JSON.parse(JSON.stringify(u)); },
+      async getBases() { return db.bases; }, async setBase(d, b) { db.bases[d] = b; },
+      async eventsSince(ms) { return Object.values(db.events).filter((x) => x.st > ms).map((x) => ({ e: x.e, st: x.st })); },
+      async putEvents(l) { l.forEach((e) => { db.events[e.id] = { e: e, st: clock++ }; }); }
+    });
+    Cloud.signedIn({ uid: 'u1', displayName: '테스트' });
+  })()`);
+  await page.waitForTimeout(300);
+  check(await ev("Object.keys(fakeDb.events).length === Store.doc.events.length && Store.doc.events.length > 0 && /^테스트 · 동기화됨/.test(document.querySelector('#account-text').textContent) && document.querySelector('#account-btn').textContent === '로그아웃'"), 'signing in uploads the records made before');
+  await ev("fakeDb.events['other.1'] = { e: { id: 'other.1', at: Date.now(), k: today(), t: 'key', q: 'C', m: 'major', ok: 1, r: 0, x: 10, g: 10 }, st: 999 }; fakeDb.user.pref.acc = 'sharp'; fakeDb.user.prefAt.acc = Date.now() + 1000");
+  const before = await ev('Store.data.days[today()].q');
+  await ev('Cloud.syncNow()');
+  check(await ev(`Store.data.days[today()].q === ${before} + 1 && ACCIDENTAL === 'sharp' && document.querySelector('#acc [data-a=sharp]').getAttribute('aria-pressed') === 'true'`), 'answers and settings from another device arrive');
+  await ev("Cloud.fb = { signOut: async () => {} }; Cloud.signOut()");
+  check(await ev("Store.doc.events.length === 0 && !Store.doc.sync && Store.data.xp === 0"), 'signing out leaves this device empty');
+
   // records saved by an earlier version move into the log on first start
   const old = await ctx.newPage();
   old.on('pageerror', (e) => errors.push(String(e)));
