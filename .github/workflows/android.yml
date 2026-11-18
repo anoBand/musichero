@@ -51,7 +51,11 @@ jobs:
       - run: ./gradlew assembleDebug --no-daemon
         working-directory: android
       - name: Name the APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk "musichero-${VERSION_NAME}.apk"
+        # release APKs carry the build number (versionCode): the app compares it to its own to offer updates
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ] || [ "$GITHUB_REF_NAME" = release ]; then n="musichero-${VERSION_NAME}-build${VERSION_CODE}.apk"
+          else n="musichero-${VERSION_NAME}.apk"; fi
+          cp android/app/build/outputs/apk/debug/app-debug.apk "$n"
       - uses: actions/upload-artifact@v4
         with:
           name: musichero-${{ env.VERSION_NAME }}

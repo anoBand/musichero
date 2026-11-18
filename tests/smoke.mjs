@@ -167,6 +167,36 @@ try {
   await ev("Cloud.fb = { signOut: async () => {} }; Cloud.signOut()");
   check(await ev("Store.doc.events.length === 0 && !Store.doc.sync && Store.data.xp === 0"), 'signing out leaves this device empty');
 
+  // Android app (Capacitor stubbed): a newer GitHub release shows a banner; tapping it downloads and installs
+  const app = await ctx.newPage();
+  app.on('pageerror', (e) => errors.push(String(e)));
+  await app.route('https://api.github.com/**', (r) => r.fulfill({ contentType: 'application/json', body: JSON.stringify({
+    tag_name: 'v9.0.0', draft: false, prerelease: false,
+    assets: [{ name: 'musichero-v9.0.0-build900.apk', browser_download_url: 'https://github.com/anoband/musichero/releases/download/v9.0.0/musichero-v9.0.0-build900.apk' }]
+  }) }));
+  await app.addInitScript(() => {
+    const listeners = {};
+    const on = (name) => ({ addListener: async (ev, fn) => { (listeners[name + ev] = listeners[name + ev] || []).push(fn); return { remove() {} }; } });
+    window.installed = [];
+    window.Capacitor = { isNativePlatform: () => true, Plugins: {
+      App: Object.assign(on('App'), { getInfo: async () => ({ build: '12', version: 'dev-12' }), exitApp() {} }),
+      LocalNotifications: { getPending: async () => ({ notifications: [] }), cancel: async () => {}, schedule: async () => {}, requestPermissions: async () => ({ display: 'granted' }) },
+      Updater: Object.assign(on('Updater'), {
+        info: async () => ({ installer: 'com.google.android.packageinstaller', canInstall: true }),
+        allowInstall: async () => {},
+        install: async (o) => { (listeners.Updaterprogress || []).forEach((f) => f({ percent: 50 })); window.installed.push(o.url); }
+      })
+    } };
+  });
+  await app.goto(URL_);
+  await app.waitForTimeout(500);
+  check(await app.evaluate("!document.querySelector('#update-bar').hidden && document.querySelector('#update-text').textContent.includes('v9.0.0')"), 'app: a newer release shows the update banner');
+  await app.click('#update-btn');
+  await app.waitForTimeout(200);
+  check(await app.evaluate("installed.length === 1 && installed[0].endsWith('build900.apk') && document.querySelector('#update-text').textContent.startsWith('설치 화면')"), 'app: tapping it downloads and opens the installer');
+  check(await app.evaluate("!document.querySelector('#remind-panel').hidden && !document.querySelector('#account-panel').hidden"), 'app: reminder and account panels show');
+  await app.close();
+
   // records saved by an earlier version move into the log on first start
   const old = await ctx.newPage();
   old.on('pageerror', (e) => errors.push(String(e)));

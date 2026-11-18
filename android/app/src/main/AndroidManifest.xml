@@ -40,4 +40,6 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- daily reminder (Android 13+ asks the user) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- installing updates from GitHub Releases (UpdaterPlugin); remove for a Play Store build -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 </manifest>

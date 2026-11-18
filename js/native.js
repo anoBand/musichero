@@ -2,7 +2,14 @@
    Plugins are reached through window.Capacitor.Plugins, so no bundler is needed. */
 const Native = {
   on: !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()),
-  plugin(name) { return this.on && window.Capacitor.Plugins ? window.Capacitor.Plugins[name] : null; }
+  cache: {},
+  /* npm plugins and the app's own (UpdaterPlugin.java) alike; registered once */
+  plugin(name) {
+    if (!this.on) return null;
+    if (this.cache[name]) return this.cache[name];
+    const C = window.Capacitor;
+    return (this.cache[name] = (C.Plugins && C.Plugins[name]) || (C.registerPlugin ? C.registerPlugin(name) : null));
+  }
 };
 
 function reminderPref() {
@@ -80,4 +87,57 @@ if (Native.on) {
     });
   }
   refreshReminders();
+}
+
+/* ---- updates for the APK from GitHub Releases (a Play Store install updates through the store) ---- */
+const Updater = { found: null, checkedAt: 0, busy: false };
+async function checkUpdate() {
+  const U = Native.plugin('Updater'), App = Native.plugin('App');
+  if (!U || !App || Updater.busy || Date.now() - Updater.checkedAt < 6 * 3600 * 1000) return;
+  Updater.checkedAt = Date.now();
+  try {
+    const info = await U.info();
+    if (info.installer === 'com.android.vending') return;
+    const app = await App.getInfo();
+    const res = await fetch(RELEASES_URL, { headers: { Accept: 'application/vnd.github+json' } });
+    if (!res.ok) return;
+    Updater.found = pickUpdate(await res.json(), app.build);
+    if (Updater.found) showUpdate('새 버전 ' + Updater.found.version + '이 나왔어요', '업데이트');
+  } catch (e) { Updater.checkedAt = 0; }
+}
+function showUpdate(text, button) {
+  $('#update-bar').hidden = false;
+  $('#update-text').textContent = text;
+  $('#update-btn').hidden = !button;
+  if (button) $('#update-btn').textContent = button;
+}
+async function installUpdate() {
+  const U = Native.plugin('Updater');
+  if (!U || !Updater.found || Updater.busy) return;
+  const info = await U.info();
+  if (!info.canInstall) {
+    showUpdate('설정에서 \'이 출처의 앱 허용\'을 켠 뒤 돌아와서 다시 눌러 주세요.', '다시 시도');
+    await U.allowInstall();
+    return;
+  }
+  Updater.busy = true;
+  showUpdate('내려받는 중 0%', '');
+  /* records go up first, so nothing waits on this device during the update */
+  if (typeof Cloud !== 'undefined') { try { await Cloud.syncNow(); } catch (e) {} }
+  const sub = await U.addListener('progress', (p) => showUpdate('내려받는 중 ' + p.percent + '%', ''));
+  try {
+    await U.install({ url: Updater.found.url });
+    showUpdate('설치 화면에서 \'업데이트\'를 눌러 주세요.', '다시 설치');
+  } catch (e) {
+    showUpdate('내려받지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.', '다시 시도');
+  } finally {
+    Updater.busy = false;
+    sub.remove();
+  }
+}
+if (Native.on) {
+  $('#update-btn').addEventListener('click', installUpdate);
+  const App = Native.plugin('App');
+  if (App) App.addListener('appStateChange', (s) => { if (s.isActive) checkUpdate(); });
+  checkUpdate();
 }

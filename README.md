@@ -18,6 +18,7 @@
   - `sync.js` 서버와 한 번 동기화하는 규칙 (Firebase 모름, DOM 없음, 테스트 대상)
   - `cloud.js` 구글 로그인, Firestore 연결, 자동 동기화, 계정 칸
   - `vendor/firebase.js` Firebase SDK 묶음 (`scripts/firebase-entry.mjs`에서 생성)
+  - `update.js` 안드로이드 앱 업데이트: GitHub 최신 릴리즈에서 더 높은 빌드 번호의 APK 찾기 (DOM 없음, 테스트 대상)
   - `ledger.js` 기록 저장 형식: 답 하나하나를 고유 ID가 붙은 이벤트로 쌓고, 화면에 보이는 값은 다시 계산. 두 기기 기록을 합쳐도 빠지거나 겹치지 않음 (동기화 준비, DOM 없음, 테스트 대상)
   - `app-state.js` 기기 저장, 공용 상태, 코드 칸
   - `audio.js` 샘플 기반 오디오 엔진
@@ -84,3 +85,10 @@ git push origin main:release
 - 보안 규칙은 `firestore.rules`. 바꾸면 Firebase 콘솔 > Firestore Database > 규칙에 붙여 넣고 게시
 - 로그인할 수 있는 주소는 콘솔 > Authentication > 설정 > 승인된 도메인에 있어야 함
 - 안드로이드 앱: `android/app/google-services.json`, 서명 키 SHA-1이 Firebase 안드로이드 앱에 등록돼 있어야 로그인됨 (서명 키를 바꾸면 새 SHA-1 추가)
+
+## 안드로이드 앱 업데이트
+
+- 릴리즈 APK 이름은 `musichero-v<버전>-build<빌드 번호>.apk` (빌드 번호 = Android versionCode = Actions 실행 번호)
+- 앱은 켤 때와 다시 열 때(6시간에 한 번) 최신 릴리즈를 확인하고, 빌드 번호가 더 높으면 홈에 업데이트 칸을 띄움
+- 누르면 `UpdaterPlugin.java`가 APK를 내려받아 설치 화면을 엶. 처음 한 번은 '이 출처의 앱 허용'이 필요
+- Play 스토어로 설치한 앱에서는 동작하지 않음. Play 스토어용 빌드에서는 `REQUEST_INSTALL_PACKAGES` 권한을 빼야 함
