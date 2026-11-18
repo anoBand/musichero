@@ -35,7 +35,6 @@ const state = {
   q: null, asked: 0, right: 0, streak: 0, last: null, nowIdx: -1
 };
 if (LEVELS[Store.data.pref.level] || Store.data.pref.level === 'custom') state.level = Store.data.pref.level;
-const practice = { style: 'pop', custom: null, progId: 'axis', keyPc: 0, bpm: 100, minutes: 10, sec: 0, unsaved: 0 };
 
 function prepareVoicing(chs) {
   const voiced = voiceLeading(chs);
@@ -45,8 +44,7 @@ function prepareVoicing(chs) {
   });
 }
 function jit(v) { return Math.min(1, v * (0.9 + Math.random() * 0.2)); }
-function inPractice() { return state.view === 'practice'; }
-function chartEl() { return inPractice() ? $('#p-chart') : $('#chart'); }
+function chartEl() { return $('#chart'); }
 
 /* chart: tiles hold the real symbols; the quiz chart stays masked until the answer */
 function renderChart() {

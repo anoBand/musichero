@@ -21,7 +21,6 @@ let current = null;          /* what is sounding: { t0, when, dur, bars, tempo, 
 let oneShots = [];
 let drumVoices = null;
 let drumCache = null;
-let retimeTimer = null;
 let ctxGen = 0;
 const sampleCache = {};
 const kitLoaded = {};
@@ -164,7 +163,7 @@ function toBuffer(arr) {
 }
 /* chords: beats 1 and 3, held for half a bar. bass: the root on beats 1 and 3. melody: root, root, fifth, root an octave up. */
 function currentStyle() {
-  const id = inPractice() ? practice.style : (state.qStyle || (state.style === 'random' ? 'pop' : state.style));
+  const id = state.qStyle || (state.style === 'random' ? 'pop' : state.style);
   return STYLES[id] ? id : 'pop';
 }
 /* sample index of a sixteenth step inside a bar, with off-beat eighths pushed late by the style's swing */
@@ -318,10 +317,9 @@ function visualLoop() {
       const pos = (((t - cur.t0) % cur.dur) + cur.dur) % cur.dur;
       const e = Math.floor(pos / cur.dur * cur.bars * 8);
       if (e !== cur.lastE) {
-        if (cur.lastE === undefined) playbackStatus(inPractice() ? '재생 중' : '재생 중 · 4마디 반복');
+        if (cur.lastE === undefined) playbackStatus('재생 중 · 4마디 반복');
         cur.lastE = e;
         setActive(Math.floor(e / 8), Math.floor((e % 8) / 2));
-        if (inPractice()) $('#p-loops').textContent = (Math.floor((t - cur.t0) / cur.dur) + 1) + '번째 반복';
       }
     }
   }
@@ -330,18 +328,16 @@ function visualLoop() {
 
 /* status line: in the quiz, playback messages only show while asking, so the result stays visible after answering */
 function setStatus(t, cls) {
-  const el = inPractice() ? $('#p-status') : $('#status');
+  const el = $('#status');
   el.textContent = t;
   el.className = 'status' + (cls ? ' ' + cls : '');
 }
-function playbackStatus(t) { if (inPractice() || state.phase !== 'answered') setStatus(t); }
+function playbackStatus(t) { if (state.phase !== 'answered') setStatus(t); }
 function setPlayUi(on) {
-  ['#play', '#p-play'].forEach((sel) => {
-    const b = $(sel);
-    b.querySelector('.ico-play').toggleAttribute('hidden', on);
-    b.querySelector('.ico-stop').toggleAttribute('hidden', !on);
-    b.querySelector('.lbl-play').textContent = on ? '정지' : (sel === '#play' ? '다시 듣기' : '재생');
-  });
+  const b = $('#play');
+  b.querySelector('.ico-play').toggleAttribute('hidden', on);
+  b.querySelector('.ico-stop').toggleAttribute('hidden', !on);
+  b.querySelector('.lbl-play').textContent = on ? '정지' : '다시 듣기';
 }
 async function lockScreen() {
   try { if (navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen'); } catch (e) { wakeLock = null; }
@@ -368,10 +364,10 @@ async function playChordDemo(c) {
   setActive(0, -1);
   setTimeout(() => { if (token === playToken) setActive(-1, -1); }, (t2 + 1.4 - ctx.currentTime) * 1000);
 }
-/* A short count-in at the new tempo (2 beats in a quiz, 4 in practice), then the loop from the given bar. */
+/* A two-beat count-in at the new tempo, then the loop from the given bar. */
 async function start(opts) {
   opts = opts || {};
-  if (!inPractice() && state.q && state.q.type === 'qual') { playChordDemo(chords[0]); return; }
+  if (state.q && state.q.type === 'qual') { playChordDemo(chords[0]); return; }
   const token = ++playToken;
   if (!ensureAudio()) { playbackStatus('이 브라우저에서는 소리를 낼 수 없어요.'); return; }
   let kit;
@@ -387,7 +383,7 @@ async function start(opts) {
   const tempo = bpm;
   const stems = stemsFor(chords, tempo, kit);
   const drum = drumsFor(chords.length, tempo);
-  const beats = opts.countIn === false ? 0 : (inPractice() ? 4 : 2);
+  const beats = opts.countIn === false ? 0 : 2;
   const beatSec = 60 / tempo;
   const t0c = ctx.currentTime + (beats ? 0.05 : 0.008);
   const when = t0c + beats * beatSec;
@@ -398,7 +394,7 @@ async function start(opts) {
   };
   for (let i = 0; i < beats; i++) click(t0c + i * beatSec, i === 0);
   /* progression quiz: the tonic rings on the first count-in beat, so the chords can be heard against home */
-  const tonic = beats && !inPractice() && state.q && state.q.type === 'prog';
+  const tonic = beats && state.q && state.q.type === 'prog';
   if (tonic) playOne(kit.chord, 60 + state.q.key.pc, t0c, beatSec * 0.9, 0.7);
   playing = true;
   setPlayUi(true);
@@ -415,12 +411,11 @@ function stop(msg, quiet) {
   setPlayUi(false);
   if (!quiet) playbackStatus(msg || '정지됨');
   unlockScreen();
-  if (was && inPractice()) flushPractice();
 }
 /* tap a chord block: playback restarts from that bar, without a count-in */
 function jumpTo(bar) {
   if (!chords.length || bar < 0 || bar >= chords.length) return;
-  if (!inPractice() && state.phase === 'idle') return;
+  if (state.phase === 'idle') return;
   if (playing) stop(null, true);
   start({ bar: bar, countIn: false });
 }
@@ -457,11 +452,6 @@ async function morph() {
   cur.tempo = tempo;
   cur.style = currentStyle();
   cur.lastE = -1;
-}
-/* tempo slider in practice: wait until it settles, then swap */
-function retime() {
-  clearTimeout(retimeTimer);
-  retimeTimer = setTimeout(() => { if (playing) morph(); }, 120);
 }
 /* a single note of the chosen instrument, 0.7s */
 async function previewTonic(pc) {
@@ -516,5 +506,4 @@ function setKit(id) {
 }
 function renderKit() {
   $$('#kits button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.k === state.kit)));
-  $('#p-kit').textContent = '악기: ' + currentKit().label;
 }

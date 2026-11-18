@@ -3,7 +3,6 @@
 $('#m-prog').addEventListener('click', () => openSetup('prog'));
 $('#m-key').addEventListener('click', () => openSetup('key'));
 $('#m-qual').addEventListener('click', () => openSetup('qual'));
-$('#m-practice').addEventListener('click', openPractice);
 $('#m-review').addEventListener('click', () => startSession('review'));
 $('#setup-back').addEventListener('click', showHome);
 $('#rec-back').addEventListener('click', showHome);
@@ -47,7 +46,6 @@ $('#theme').addEventListener('click', () => {
 applyTheme(Store.data.pref.theme || null);
 $('#start').addEventListener('click', () => startSession(state.session.kind));
 $('#quit').addEventListener('click', showHome);
-$('#p-quit').addEventListener('click', showHome);
 $('#next').addEventListener('click', () => { nextQuestion(); });
 $('#confirm').addEventListener('click', () => {
   if (state.q && state.q.type === 'prog' && state.q.free) submitWritten();
@@ -92,7 +90,6 @@ $('#opts').addEventListener('click', (e) => {
   else if (state.phase === 'answered') { if (isKey) audition(i); else switchTo(i); }
 });
 $('#play').addEventListener('click', () => { if (playing) stop(); else start(); });
-$('#p-play').addEventListener('click', () => { if (playing) stop(); else start(); });
 $('#modes').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-m]');
   if (!b) return;
@@ -140,7 +137,7 @@ function buildKeyGrid(el, withRandom, onPick) {
   });
 }
 function relabelKeyGrids() {
-  $$('#keygrid .chip, #p-keygrid .chip').forEach((b) => {
+  $$('#keygrid .chip').forEach((b) => {
     if (b.dataset.k !== 'random') b.textContent = keyLabel(keyObj('major', Number(b.dataset.k)));
   });
 }
@@ -152,95 +149,14 @@ buildKeyGrid($('#keygrid'), true, (v) => {
   if (state.keyPc !== null) previewTonic(state.keyPc);
 });
 markKeyGrid($('#keygrid'), 'random');
-buildKeyGrid($('#p-keygrid'), false, (v) => { if (practice.custom) return; practice.keyPc = Number(v); renderPracticeHead(); applyPractice(true); });
-markKeyGrid($('#p-keygrid'), String(practice.keyPc));
-
-/* solo practice: progression picker (a full-screen list instead of a dropdown) */
-function renderPracticeHead() {
-  const custom = !!practice.custom;
-  $('#p-keygrid').classList.toggle('off', custom);
-  if (custom) {
-    $('#p-prog-roman').textContent = parseProgressionText(practice.custom).chords.map((c) => c.root + c.quality + (c.slash ? '/' + c.slash : '')).join(' ');
-    $('#p-prog-name').textContent = '직접 입력한 진행 · 키는 입력한 코드 그대로';
-    $('#p-suggest').hidden = true;
-    return;
-  }
-  const p = practiceProg();
-  $('#p-prog-roman').textContent = p.roman;
-  $('#p-prog-name').textContent = (p.name ? p.name + ' · ' : '') + modeWord(p.mode);
-  const typ = typicalFor(p.id);
-  const sg = $('#p-suggest');
-  sg.hidden = !typ || (typ.keyPc === practice.keyPc && typ.bpm === practice.bpm);
-  if (typ) sg.textContent = '이 진행에 흔한 설정: ' + keyLabel(keyObj(p.mode, typ.keyPc)) + (p.mode === 'minor' ? 'm' : '') + ' · ' + typ.bpm + ' BPM';
-}
-function setPracticeBpm(v) {
-  practice.bpm = v;
-  bpm = v;
-  $('#p-bpm').value = String(v);
-  $('#p-bpm-out').textContent = v + ' BPM';
-  if (playing) retime();
-}
-$('#p-suggest').addEventListener('click', () => {
-  const typ = typicalFor(practice.progId);
-  if (!typ) return;
-  practice.keyPc = typ.keyPc;
-  markKeyGrid($('#p-keygrid'), String(typ.keyPc));
-  setPracticeBpm(typ.bpm);
-  renderPracticeHead();
-  applyPractice(true);
-});
-function openSheet() {
-  const list = $('#sheet-list');
-  list.textContent = '';
-  ['major', 'minor'].forEach((mode) => {
-    const key = keyObj(mode, practice.keyPc);
-    const h = document.createElement('h2'); h.textContent = modeWord(mode); list.appendChild(h);
-    POOL.filter((p) => p.mode === mode).forEach((p) => {
-      const b = document.createElement('button');
-      b.type = 'button'; b.className = 'prow'; b.dataset.id = p.id;
-      if (p.id === practice.progId) b.setAttribute('aria-current', 'true');
-      const r = document.createElement('span'); r.className = 'r'; r.textContent = p.roman;
-      const n = document.createElement('span'); n.className = 'n'; n.textContent = (p.name || modeWord(mode) + ' 진행') + ' · 난이도 ' + progDifficulty(p.id);
-      const c = document.createElement('span'); c.className = 'c'; c.textContent = chordText(chordsFor(p, key));
-      b.append(r, n, c);
-      list.appendChild(b);
-    });
-  });
-  $('#sheet').hidden = false;
-  $('#sheet').scrollTop = 0;
-}
-function closeSheet() { $('#sheet').hidden = true; }
-$('#p-prog-btn').addEventListener('click', openSheet);
-$('#sheet-close').addEventListener('click', closeSheet);
-$('#sheet-list').addEventListener('click', (e) => {
-  const b = e.target.closest('button[data-id]');
-  if (!b) return;
-  practice.progId = b.dataset.id;
-  practice.custom = null;
-  closeSheet();
-  renderPracticeHead();
-  applyPractice(true);
-});
-renderPracticeHead();
-$('#p-bpm').addEventListener('input', (e) => { setPracticeBpm(Number(e.target.value)); renderPracticeHead(); });
-$('#p-timer').addEventListener('click', (e) => {
-  const b = e.target.closest('button[data-t]');
-  if (!b) return;
-  practice.minutes = Number(b.dataset.t);
-  $$('#p-timer button').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
-  renderPracticeClock();
-});
-
-/* 3. chord blocks are tappable in the quiz and in practice */
-['#chart', '#p-chart'].forEach((sel) => {
-  $(sel).addEventListener('pointerdown', (e) => {
-    const bar = e.target.closest('.bar');
-    if (!bar) return;
-    const idx = Array.prototype.indexOf.call(bar.parentNode.children, bar);
-    /* written answer: the tapped bar is also the one the next chord goes into */
-    if (sel === '#chart' && state.q && state.q.free && state.q.type === 'prog' && state.phase === 'asking') { state.slot = idx; renderSlots(); }
-    jumpTo(idx);
-  });
+/* chord blocks are tappable: playback restarts from that bar */
+$('#chart').addEventListener('pointerdown', (e) => {
+  const bar = e.target.closest('.bar');
+  if (!bar) return;
+  const idx = Array.prototype.indexOf.call(bar.parentNode.children, bar);
+  /* written answer: the tapped bar is also the one the next chord goes into */
+  if (state.q && state.q.free && state.q.type === 'prog' && state.phase === 'asking') { state.slot = idx; renderSlots(); }
+  jumpTo(idx);
 });
 
 /* 1. key naming, chosen on the home screen and remembered on this device */
@@ -257,7 +173,7 @@ $('#acc').addEventListener('click', (e) => {
 });
 markAcc();
 
-/* backing style: quiz (with 'random', a new style each question) and practice (its own choice) */
+/* backing style ('random': a new style each question) */
 const STYLE_CHOICES = STYLE_IDS.concat(['random']);
 STYLE_CHOICES.forEach((id) => {
   const b = document.createElement('button');
@@ -267,7 +183,6 @@ STYLE_CHOICES.forEach((id) => {
 });
 function renderStyles() {
   $$('#styles button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.s === state.style)));
-  $('#p-style').textContent = '스타일: ' + STYLES[practice.style].label;
 }
 $('#styles').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-s]');
@@ -278,39 +193,12 @@ $('#styles').addEventListener('click', (e) => {
   renderStyles();
   if (state.bpmMode === 'fixed' && !LEVELS[state.level]) previewBeat();
 });
-$('#p-style').addEventListener('click', () => {
-  practice.style = STYLE_IDS[(STYLE_IDS.indexOf(practice.style) + 1) % STYLE_IDS.length];
-  Store.data.pref.pstyle = practice.style;
-  Store.save();
-  renderStyles();
-  if (playing) morph();
-});
 if (STYLE_CHOICES.indexOf(Store.data.pref.style) >= 0) state.style = Store.data.pref.style;
-if (STYLES[Store.data.pref.pstyle]) practice.style = Store.data.pref.pstyle;
 renderStyles();
-
-/* typed progression in solo practice */
-function applyCustom() {
-  const text = $('#custom-text').value.trim();
-  const r = parseProgressionText(text);
-  const msg = $('#custom-msg');
-  if (r.error) { msg.textContent = r.error; msg.classList.add('err'); return; }
-  msg.classList.remove('err');
-  practice.custom = text;
-  Store.data.pref.custom = text;
-  Store.save();
-  closeSheet();
-  renderPracticeHead();
-  applyPractice(true);
-}
-$('#custom-go').addEventListener('click', applyCustom);
-$('#custom-text').addEventListener('keydown', (e) => { if (e.key === 'Enter') applyCustom(); });
-if (Store.data.pref.custom) $('#custom-text').value = Store.data.pref.custom;
 
 /* backing instrument */
 if (KITS[Store.data.pref.kit]) state.kit = Store.data.pref.kit;
 $('#kits').addEventListener('click', (e) => { const b = e.target.closest('button[data-k]'); if (b) setKit(b.dataset.k); });
-$('#p-kit').addEventListener('click', () => { const ids = Object.keys(KITS); setKit(ids[(ids.indexOf(state.kit) + 1) % ids.length]); });
 renderKit();
 
 /* reset asks twice; the viewer has no confirm dialog */
@@ -330,7 +218,6 @@ $('#reset').addEventListener('click', () => {
   b.textContent = '한 번 더 누르면 모두 지워져요';
   resetArmed = setTimeout(() => { resetArmed = null; b.textContent = '기록 초기화'; }, 4000);
 });
-document.addEventListener('visibilitychange', () => { if (document.hidden) flushPractice(); });
 
 renderHome();
 

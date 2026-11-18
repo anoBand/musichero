@@ -1,8 +1,9 @@
 /* Progress rules: days, streaks, quests, reviews, XP and levels. Plain data in, plain data out.
    No DOM: also loaded by the unit tests in Node. */
 /* ---- progress: plain data in, plain data out, so the storage behind it can change later ---- */
+/* GOAL_PRACTICE: solo practice was removed; days that met the goal by 10 minutes of it still count */
 const GOAL_Q = 5, GOAL_PRACTICE = 600;
-const XP_RIGHT = 10, XP_WRONG = 2, XP_PER_MIN = 5;
+const XP_RIGHT = 10, XP_WRONG = 2;
 /* Each level needs 50 XP more than the one before: 100, 150, 200, ... */
 function levelInfo(xp) {
   let level = 1, need = 100, into = xp;
@@ -26,8 +27,8 @@ function addDays(k, n) { const d = keyToDate(k); d.setDate(d.getDate() + n); ret
 function weekStart(k) { const d = keyToDate(k); return addDays(k, -((d.getDay() + 6) % 7)); }
 function freshData() { return { v: 1, xp: 0, days: {}, review: [], prog: {}, quests: {}, weeks: {}, pref: { acc: 'flat' } }; }
 function getDay(data, k) { return data.days[k] || (data.days[k] = { q: 0, right: 0, practice: 0, best: 0, cur: 0 }); }
-function goalMet(day) { return !!day && (day.q >= GOAL_Q || day.practice >= GOAL_PRACTICE); }
-function goalRatio(day) { return day ? Math.min(1, Math.max(day.q / GOAL_Q, day.practice / GOAL_PRACTICE)) : 0; }
+function goalMet(day) { return !!day && (day.q >= GOAL_Q || (day.practice || 0) >= GOAL_PRACTICE); }
+function goalRatio(day) { return day ? Math.min(1, Math.max(day.q / GOAL_Q, (day.practice || 0) / GOAL_PRACTICE)) : 0; }
 /* consecutive days with the goal met; today counts once met, and an unmet today doesn't break yesterday's run */
 function streakCount(data, k) {
   let c = goalMet(data.days[k]) ? k : addDays(k, -1);
@@ -47,7 +48,6 @@ function questList(data, k) {
   const list = [
     { id: 'q5', scope: 'day', label: '문제 5개 풀기', cur: d.q, max: 5, unit: '문제', xp: 20 },
     { id: 's3', scope: 'day', label: '3문제 연속으로 맞히기', cur: d.best, max: 3, unit: '연속', xp: 20 },
-    { id: 'p5', scope: 'day', label: '솔로 연습 5분', cur: Math.floor(d.practice / 60), max: 5, unit: '분', xp: 20 },
     { id: 'w3', scope: 'week', label: '이번 주 3일 목표 달성', cur: weekGoalDays(data, k), max: 3, unit: '일', xp: 50 }
   ];
   list.forEach((q) => {
@@ -85,16 +85,9 @@ function recordAnswer(data, k, a) {
   else data.review.push({ t: a.type, id: a.id, mode: a.mode, due: addDays(k, 1) });
   return settleQuests(data, k);
 }
-function addPractice(data, k, sec) {
-  const d = getDay(data, k);
-  const before = d.practice;
-  d.practice += sec;
-  data.xp += (Math.floor(d.practice / 60) - Math.floor(before / 60)) * XP_PER_MIN;
-  return settleQuests(data, k);
-}
 function activityLevel(day) {
   if (!day) return 0;
-  const r = Math.max(day.q / GOAL_Q, day.practice / GOAL_PRACTICE);
+  const r = Math.max(day.q / GOAL_Q, (day.practice || 0) / GOAL_PRACTICE);
   return r <= 0 ? 0 : r < 0.5 ? 1 : r < 1 ? 2 : r < 2 ? 3 : 4;
 }
 function longestStreak(data) {
@@ -119,7 +112,7 @@ function reminderPlan(data, now, hour, minute, days) {
     if (i === 0 && (at <= now || goalMet(data.days[todayKey]))) continue;
     const body = i === 0 && streak > 0
       ? streak + '일 연속 기록이 이어지도록 오늘 5문제만 풀어볼까요?'
-      : '오늘 목표: 5문제 또는 연습 10분';
+      : '오늘 목표: 5문제 풀기';
     out.push({ id: 100 + i, at: at, title: 'Music Hero', body: body });
   }
   return out;
@@ -141,7 +134,7 @@ function totals(data) {
 if (typeof module !== 'undefined') {
   module.exports = {
     GOAL_Q, GOAL_PRACTICE, XP_RIGHT, XP_WRONG, dayKey, addDays, weekStart, freshData, goalMet, streakCount,
-    weekGoalDays, questList, settleQuests, recordAnswer, addPractice, dueReviews, totals, levelInfo, titleFor,
+    weekGoalDays, questList, settleQuests, recordAnswer, dueReviews, totals, levelInfo, titleFor,
     unlockedAt, activityLevel, longestStreak, reminderPlan
   };
 }

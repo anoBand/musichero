@@ -2,8 +2,8 @@
 /* ---- views ---- */
 function show(view) {
   state.view = view;
-  ['home', 'records', 'setup', 'quiz', 'practice'].forEach((v) => { $('#' + v).hidden = v !== view; });
-  document.body.classList.toggle('quizzing', view === 'quiz' || view === 'practice');
+  ['home', 'records', 'setup', 'quiz'].forEach((v) => { $('#' + v).hidden = v !== view; });
+  document.body.classList.toggle('quizzing', view === 'quiz');
   window.scrollTo(0, 0);
 }
 function fmtTime(sec) { return Math.floor(sec / 60) + ':' + pad2(sec % 60); }
@@ -17,9 +17,9 @@ function renderHome() {
   const day = data.days[k] || { q: 0, right: 0, practice: 0 };
   const met = goalMet(day);
   $('#streak-n').textContent = String(streakCount(data, k));
-  $('#goal-title').textContent = met ? '오늘 목표를 달성했어요' : '오늘 목표: 5문제 또는 연습 10분';
+  $('#goal-title').textContent = met ? '오늘 목표를 달성했어요' : '오늘 목표: 5문제 풀기';
   $('#goal-bar').style.width = Math.round(goalRatio(day) * 100) + '%';
-  $('#goal-detail').textContent = '문제 ' + Math.min(day.q, GOAL_Q) + '/' + GOAL_Q + ' · 연습 ' + Math.min(Math.floor(day.practice / 60), GOAL_PRACTICE / 60) + '/' + (GOAL_PRACTICE / 60) + '분';
+  $('#goal-detail').textContent = '문제 ' + Math.min(day.q, GOAL_Q) + '/' + GOAL_Q;
   const li = levelInfo(data.xp);
   $('#level-n').textContent = '레벨 ' + li.level + ' · ' + titleFor(li.level);
   $('#level-bar').style.width = Math.round(li.into / li.need * 100) + '%';
@@ -54,7 +54,7 @@ function dayDetail(k) {
   const dt = keyToDate(k);
   const head = (dt.getMonth() + 1) + '월 ' + dt.getDate() + '일';
   if (!d || (!d.q && !d.practice)) return head + ' · 기록 없음';
-  return head + ' · 문제 ' + d.q + '개 (정답 ' + d.right + ') · 연습 ' + Math.floor(d.practice / 60) + '분' + (goalMet(d) ? ' · 목표 달성' : '');
+  return head + ' · 문제 ' + d.q + '개 (정답 ' + d.right + ')' + (d.practice ? ' · 연습 ' + Math.floor(d.practice / 60) + '분' : '') + (goalMet(d) ? ' · 목표 달성' : '');
 }
 function renderRecords() {
   const data = Store.data;
@@ -93,8 +93,8 @@ function renderRecords() {
   [
     ['푼 문제', tot.q + '문제'],
     ['정답률', tot.q ? Math.round(tot.right / tot.q * 100) + '%' : '-'],
-    ['연습 시간', fmtDuration(tot.practice)],
-    ['연습한 날', active + '일'],
+    ['공부한 날', active + '일'],
+    ['연속 최장', longestStreak(data) + '일'],
     ['레벨', levelInfo(data.xp).level + ' · ' + titleFor(levelInfo(data.xp).level)],
     ['누적 XP', String(data.xp)]
   ].forEach((r) => {
@@ -129,7 +129,6 @@ function openRecords() { show('records'); renderRecords(); }
 function showHome() {
   clearTimeout(beatTimer);
   if (playing) stop();
-  closeSheet();
   state.phase = 'idle';
   show('home');
   renderHome();

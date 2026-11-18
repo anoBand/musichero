@@ -23,8 +23,8 @@ test('goal and streak', () => {
   assert.equal(P.streakCount(D, t), 1);
   assert.equal(P.streakCount(D, '2026-11-11'), 1, 'an unmet today keeps yesterday');
   assert.equal(P.streakCount(D, '2026-11-12'), 0, 'a missed day breaks it');
-  P.addPractice(D, '2026-11-11', 600);
-  assert.equal(P.streakCount(D, '2026-11-11'), 2, '10 minutes of practice meets the goal');
+  D.days['2026-11-11'] = { q: 0, right: 0, practice: 600, best: 0, cur: 0 };
+  assert.equal(P.streakCount(D, '2026-11-11'), 2, 'days met by solo practice before it was removed still count');
 });
 
 test('quests pay once', () => {

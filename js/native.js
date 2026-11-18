@@ -68,16 +68,14 @@ if (Native.on) {
   });
   const App = Native.plugin('App');
   if (App) {
-    /* hardware back: close the sheet, then go home, then leave the app */
+    /* hardware back: go home, then leave the app */
     App.addListener('backButton', () => {
-      if (!$('#sheet').hidden) closeSheet();
-      else if (state.view !== 'home') showHome();
+      if (state.view !== 'home') showHome();
       else App.exitApp();
     });
     App.addListener('appStateChange', (s) => {
       if (s.isActive) return;
       if (playing) stop(null, true);
-      flushPractice();
       refreshReminders();
     });
   }

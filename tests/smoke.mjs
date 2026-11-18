@@ -36,6 +36,7 @@ try {
   await page.goto(URL_);
   await page.waitForTimeout(300);
   check(await ev("document.querySelector('h1').textContent") === 'Music Hero', 'home renders');
+  check(await ev("document.querySelectorAll('#home .mode').length") === 4, 'home lists the three quizzes and review');
   await ev('Store.data.xp = 1000; Store.save()');
 
   // progression quiz, multiple choice
@@ -85,18 +86,6 @@ try {
   check(await ev("document.querySelector('#status').textContent.startsWith('정답')"), 'key answer is graded');
   await page.click('#quit');
 
-  // practice
-  await page.click('#m-practice');
-  await page.click('#p-play');
-  await page.waitForTimeout(3000);
-  check(await ev('playing && current.kit === state.kit'), 'practice plays');
-  await page.click('#p-keygrid [data-k="5"]');
-  await page.waitForTimeout(200);
-  check(await ev("playing && document.querySelector('#p-chart .sym').textContent === 'F'"), 'changing key keeps playing');
-  check(await fits(), 'practice fits one phone screen');
-  await page.click('#p-quit');
-  check(await ev('!playing'), 'leaving stops the sound');
-
   // every backing style renders sound in every part, and the quiz shows the style
   const levels = await ev(`(async () => {
     const kit = await loadKit();
@@ -120,23 +109,6 @@ try {
   await page.click('#m-prog');
   await page.click('#styles [data-s="pop"]');
   await page.click('#setup-back');
-
-  // typed progression and style change in practice
-  await page.click('#m-practice');
-  await page.click('#p-prog-btn');
-  await page.fill('#custom-text', 'C Hm F');
-  await page.click('#custom-go');
-  check(await ev("document.querySelector('#custom-msg').classList.contains('err') && !document.querySelector('#sheet').hidden"), 'typed progression: error shown');
-  await page.fill('#custom-text', 'Dm7 G7 Cmaj7 A7/C# Dm7 G7 C6 C6');
-  await page.click('#custom-go');
-  await page.click('#p-play');
-  await page.waitForTimeout(2800);
-  check(await ev("playing && current.bars === 8 && document.querySelectorAll('#p-chart .bar').length === 8"), 'typed 8-bar progression plays');
-  check(await fits(), 'practice with 8 bars fits one phone screen');
-  await page.click('#p-style');
-  await page.waitForTimeout(200);
-  check(await ev("playing && current.style === practice.style && practice.style !== 'pop'"), 'changing style keeps playing');
-  await page.click('#p-quit');
 
   // chord-quality quiz
   await page.click('#m-qual');

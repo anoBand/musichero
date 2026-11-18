@@ -139,24 +139,17 @@ test('styles: every event is on the bar grid with sensible values', () => {
   }
 });
 
-test('typed progressions', () => {
-  const ok = (text, expect) => {
-    const r = T.parseProgressionText(text);
-    assert.ok(!r.error, text + ': ' + r.error);
-    assert.equal(r.chords.map((c) => c.root + c.quality + (c.slash ? '/' + c.slash : '')).join(' '), expect);
-  };
-  ok('C G Am F', 'C G Am F');
-  ok('c, g/b | am - f', 'C G/B Am F');
-  ok('Bbmaj7 Eb7 F#m7b5 B7', 'B♭maj7 E♭7 F♯m7b5 B7');
-  ok('D♭ A♭ B♭m G♭', 'D♭ A♭ B♭m G♭');
-  ok('CΔ7 Dmin7 G7sus4 Co7', 'Cmaj7 Dm7 G7sus4 Cdim7');
-  assert.ok(T.parseProgressionText('').error);
-  assert.ok(T.parseProgressionText('C D E F G A B C D').error, 'more than 8');
-  assert.match(T.parseProgressionText('C Hm F').error, /"Hm"/);
-  assert.ok(T.parseProgressionText('Cxyz').error);
-  const g9 = T.parseProgressionText('G9 Cm9 Fmaj9').chords;
-  const v = T.voiceLeading(g9);
-  v.forEach((notes, i) => assert.deepEqual(new Set(notes.map((n) => n % 12)), new Set(g9[i].intervals.map((x) => (g9[i].pc + x) % 12))));
+test('chord spellings: symbols, aliases, slash basses, extended chords', () => {
+  const name = (t) => { const c = T.parseChord(t); return c && c.root + c.quality + (c.slash ? '/' + c.slash : ''); };
+  assert.equal(name('g/b'), 'G/B');
+  assert.equal(name('Bbmaj7'), 'B♭maj7');
+  assert.equal(name('F#m7b5'), 'F♯m7b5');
+  assert.equal(name('CΔ7'), 'Cmaj7');
+  assert.equal(name('Co7'), 'Cdim7');
+  assert.equal(name('Hm'), null);
+  assert.equal(name('Cxyz'), null);
+  const ext = ['G9', 'Cm9', 'Fmaj9'].map(T.parseChord);
+  T.voiceLeading(ext).forEach((notes, i) => assert.deepEqual(new Set(notes.map((n) => n % 12)), new Set(ext[i].intervals.map((x) => (ext[i].pc + x) % 12))));
 });
 
 test('chord-quality questions', () => {

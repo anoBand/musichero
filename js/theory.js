@@ -62,22 +62,6 @@ const POOL = [
   { id: 'min-6371', mode: 'minor', roman: '♭VI–♭III–♭VII–i',  name: '',                        steps: [[8, ''], [3, ''], [10, ''], [0, 'm']] },
   { id: 'min-iv',   mode: 'minor', roman: 'iv–i–♭VII–♭VI',    name: '',                        steps: [[5, 'm'], [0, 'm'], [10, ''], [8, '']] }
 ];
-/* A progression typed by the user: one chord per bar, 1 to 8 bars, separated by spaces, commas, bars or dashes.
-   Returns { chords } or { error } with a message to show. */
-function parseProgressionText(text) {
-  const tokens = String(text || '').replace(/[|,\u2013\u2014→>]/g, ' ').replace(/\s-\s|^-|\s-$/g, ' ').split(/\s+/).filter(Boolean)
-    .map((t) => t.replace(/♭/g, 'b').replace(/♯/g, '#'));
-  if (!tokens.length) return { error: '코드를 하나 이상 입력해 주세요. 예: C G Am F' };
-  if (tokens.length > 8) return { error: '코드는 8개(8마디)까지 입력할 수 있어요.' };
-  const chords = [];
-  for (const t of tokens) {
-    const c = parseChord(t);
-    if (!c) return { error: '"' + t + '"을(를) 읽지 못했어요. 예: C, Am, F#m7, Bbmaj7, G/B, Dm7b5' };
-    chords.push(c);
-  }
-  return { chords: chords };
-}
-
 /* Backing styles. One bar on a grid of sixteenths, repeated for every chord.
    chord:  [step, length, velocity, voice]  voice 'all' = the whole chord, a number = that note of the voicing
            (from the bottom; -1 = top), for arpeggios
@@ -141,9 +125,9 @@ function makeQualQuestion(levelId, last, forced) {
     options: options, chords: [make(quality)] };
 }
 function startsOnTonic(p) { return p.steps[0][0] === 0; }
-/* Per-progression survey: d = how hard it is to tell by ear (1 easy – 5 hard); keys (pitch classes of the tonic)
-   and bpm are where it commonly turns up. d builds the presets. keys/bpm are only offered as a suggestion in solo
-   practice: tying a quiz key or tempo to one progression would give the answer away. */
+/* Per-progression survey: d = how hard it is to tell by ear (1 easy – 5 hard), which builds the presets; keys
+   (pitch classes of the tonic) and bpm are where it commonly turns up. Kept for reference only: tying a quiz key
+   or tempo to one progression would give the answer away. */
 const PROG_INFO = {
   axis: { d: 1, keys: [0, 11, 4], bpm: [72, 150] },        fifties: { d: 1, keys: [9, 3, 11], bpm: [116, 138] },
   turn: { d: 2, keys: [8, 2], bpm: [70, 102] },             three: { d: 1, keys: [0, 2, 9], bpm: [116, 150] },
@@ -158,12 +142,6 @@ const PROG_INFO = {
   'min-iv': { d: 4, keys: [9, 2], bpm: [96, 135] }
 };
 function progDifficulty(id) { return (PROG_INFO[id] && PROG_INFO[id].d) || 3; }
-/* a common key and a middle-of-the-road tempo for a progression, or null when the survey has none */
-function typicalFor(id) {
-  const info = PROG_INFO[id];
-  if (!info || !info.keys) return null;
-  return { keyPc: info.keys[0], bpm: Math.max(70, Math.min(130, Math.round((info.bpm[0] + info.bpm[1]) / 2))) };
-}
 /* Difficulty presets: which progressions, which keys, which tempo range, and which notes compete with the tonic
    in the key quiz (scale degrees).
    하수: major only, progressions built from I, IV, V and vi; common keys; a steady medium tempo.
@@ -383,7 +361,7 @@ if (typeof module !== 'undefined') {
     NOTE_PC, QUALITIES, POOL, FLAT_NAMES, SHARP_NAMES, LEVELS, PROG_INFO, ROMAN,
     parseChord, keyObj, keysFor, keyByName, keyLabel, solfege, modeWord, chordsFor, chordText, rootName,
     startsOnTonic, poolFor, keyChoices, randomIn, randomBpm, makeProgQuestion, makeKeyQuestion,
-    paletteFor, sameSteps, romanOf, voiceLeading, assign, typicalFor, progDifficulty, parseProgressionText, STYLES, STYLE_IDS, makeQualQuestion, QUAL_SETS, QUAL_NAMES,
+    paletteFor, sameSteps, romanOf, voiceLeading, assign, progDifficulty, STYLES, STYLE_IDS, makeQualQuestion, QUAL_SETS, QUAL_NAMES,
     setAccidental: (a) => { ACCIDENTAL = a; }
   };
 }
