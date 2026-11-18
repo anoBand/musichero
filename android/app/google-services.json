@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "589831874225",
+    "project_id": "quiz-algernon",
+    "storage_bucket": "quiz-algernon.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:589831874225:android:0ef9f15c9f22874a68e490",
+        "android_client_info": {
+          "package_name": "io.github.anoband.musichero"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "589831874225-vk1q15f32p58kqp42kchmt9t5osm4hbp.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "io.github.anoband.musichero",
+            "certificate_hash": "9c6ca030d12a7955eb17daa5c3e1115569a8d04c"
+          }
+        },
+        {
+          "client_id": "589831874225-khs6guemt1m7qd7fk4qsn9iingkdtal4.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAeWuw0B1FiDnZq-nV5bGRoQbYUzNnWqlY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "589831874225-khs6guemt1m7qd7fk4qsn9iingkdtal4.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

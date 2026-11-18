@@ -6,8 +6,9 @@
      users/{uid}                 { pref, prefAt, resetAt, updated }
      users/{uid}/events/{id}     one answer, plus st = server time it arrived
      users/{uid}/bases/{dev}     records a device had before the log existed
-   The Android app needs a native sign-in (Google blocks it inside app web views), so the account panel is
-   hidden there for now. */
+   Web: Google's sign-in popup. Android app: Google blocks that inside app web views, so the native Google
+   sign-in (@capacitor-firebase/authentication, skipNativeAuth) hands back an ID token and the same Firebase
+   JS session is started from it; everything after that is shared. */
 const FIREBASE_CONFIG = {
   apiKey: 'AIzaSyAIFF_kK9DJWV1cOmQIeHsRWA2hJhUAxVY',
   authDomain: 'quiz-algernon.firebaseapp.com',
@@ -30,7 +31,8 @@ const Cloud = {
     this.ready = import(SDK_URL).then((fb) => new Promise((resolve) => {
       this.fb = fb;
       const app = fb.initializeApp(FIREBASE_CONFIG);
-      this.auth = fb.getAuth(app);
+      /* in the app, no popup machinery: it would try to load Google's sign-in iframe */
+      this.auth = Native.on ? fb.initializeAuth(app, { persistence: fb.indexedDBLocalPersistence }) : fb.getAuth(app);
       this.db = fb.initializeFirestore(app, { ignoreUndefinedProperties: true });
       let first = true;
       fb.onAuthStateChanged(this.auth, (user) => {
@@ -121,12 +123,20 @@ const Cloud = {
   async signIn() {
     await this.load();
     const fb = this.fb;
-    await fb.signInWithPopup(this.auth, new fb.GoogleAuthProvider());
+    if (Native.on) {
+      const r = await Native.plugin('FirebaseAuthentication').signInWithGoogle({ skipNativeAuth: true });
+      if (!r || !r.credential || !r.credential.idToken) throw { code: 'auth/popup-closed-by-user' };
+      await fb.signInWithCredential(this.auth, fb.GoogleAuthProvider.credential(r.credential.idToken));
+    } else {
+      await fb.signInWithPopup(this.auth, new fb.GoogleAuthProvider());
+    }
   },
   async signOut() {
     await this.syncNow();
     if (unsentCount(Store.doc)) return false;
     await this.fb.signOut(this.auth);
+    /* let the next sign-in in the app offer the account choice again */
+    if (Native.on) { try { await Native.plugin('FirebaseAuthentication').signOut(); } catch (e) {} }
     Store.forget();
     renderHome();
     renderAccount();
@@ -177,33 +187,34 @@ const AUTH_ERRORS = {
   'auth/operation-not-supported-in-this-environment': '이 브라우저에서는 로그인할 수 없어요.'
 };
 
-if (Native.on) {
-  $('#account-panel').hidden = true;
-} else {
-  $('#account-btn').addEventListener('click', async () => {
-    accountNote('');
-    const btn = $('#account-btn');
-    btn.disabled = true;
-    try {
-      if (Cloud.user) {
-        if (!(await Cloud.signOut())) accountNote('아직 올리지 못한 기록이 있어요. 인터넷에 연결된 뒤 다시 눌러 주세요.');
-        else accountNote('로그아웃했어요. 기록은 계정에 남아 있어서 다시 로그인하면 돌아와요.');
-      } else {
-        await Cloud.signIn();
-      }
-    } catch (e) {
-      const code = e && e.code;
-      if (code !== 'auth/popup-closed-by-user' && code !== 'auth/cancelled-popup-request') {
-        accountNote(AUTH_ERRORS[code] || (navigator.onLine === false ? AUTH_ERRORS['auth/network-request-failed'] : '로그인하지 못했어요. 잠시 뒤 다시 해 주세요.'));
-      }
-    } finally {
-      btn.disabled = false;
+$('#account-btn').addEventListener('click', async () => {
+  accountNote('');
+  const btn = $('#account-btn');
+  btn.disabled = true;
+  try {
+    if (Cloud.user) {
+      if (!(await Cloud.signOut())) accountNote('아직 올리지 못한 기록이 있어요. 인터넷에 연결된 뒤 다시 눌러 주세요.');
+      else accountNote('로그아웃했어요. 기록은 계정에 남아 있어서 다시 로그인하면 돌아와요.');
+    } else {
+      await Cloud.signIn();
     }
-  });
-  /* load the SDK early, so the sign-in popup opens straight from the tap (browsers block late popups) */
+  } catch (e) {
+    const code = e && e.code;
+    const cancelled = code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request' || /cancel/i.test((e && e.message) || '');
+    if (!cancelled) {
+      accountNote(AUTH_ERRORS[code] || (navigator.onLine === false ? AUTH_ERRORS['auth/network-request-failed'] : '로그인하지 못했어요. 잠시 뒤 다시 해 주세요.'));
+    }
+  } finally {
+    btn.disabled = false;
+  }
+});
+{
+  /* load the SDK early, so the sign-in popup opens straight from the tap (browsers block late popups);
+     in the app it is only needed once someone has signed in */
   const signedInBefore = !!(Store.doc.sync && Store.doc.sync.uid);
   const start = () => Cloud.load().catch(() => {});
   if (signedInBefore) start();
+  else if (Native.on) { /* loaded on the first tap */ }
   else if ('requestIdleCallback' in window) requestIdleCallback(start, { timeout: 4000 });
   else setTimeout(start, 1500);
   window.addEventListener('online', () => Cloud.syncNow());
@@ -211,5 +222,5 @@ if (Native.on) {
     if (document.visibilityState === 'hidden') Cloud.syncNow();
     else if (Date.now() - Cloud.lastOk > 60000) Cloud.syncNow();
   });
-  renderAccount();
 }
+renderAccount();

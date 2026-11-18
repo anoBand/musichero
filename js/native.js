@@ -72,8 +72,10 @@ if (Native.on) {
       else App.exitApp();
     });
     App.addListener('appStateChange', (s) => {
-      if (s.isActive) return;
+      const cloud = typeof Cloud !== 'undefined' ? Cloud : null;
+      if (s.isActive) { if (cloud && Date.now() - cloud.lastOk > 60000) cloud.syncNow(); return; }
       if (playing) stop(null, true);
+      if (cloud) cloud.syncNow();
       refreshReminders();
     });
   }

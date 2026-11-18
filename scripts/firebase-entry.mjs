@@ -3,7 +3,7 @@
 //   npx esbuild scripts/firebase-entry.mjs --bundle --format=esm --minify --legal-comments=eof \
 //     --outfile=js/vendor/firebase.js
 export { initializeApp } from 'firebase/app';
-export { getAuth, GoogleAuthProvider, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged } from 'firebase/auth';
+export { getAuth, initializeAuth, indexedDBLocalPersistence, GoogleAuthProvider, signInWithPopup, signInWithCredential, signOut, onAuthStateChanged } from 'firebase/auth';
 export {
   initializeFirestore, doc, collection, getDoc, getDocs, setDoc, writeBatch, query, where, orderBy,
   serverTimestamp, Timestamp
