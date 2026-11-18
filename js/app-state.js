@@ -1,21 +1,47 @@
 /* Device storage, shared state, and the chord chart. */
-/* ---- storage: this device only. Swap load/save for a server call later; nothing else reads localStorage. ---- */
+/* ---- storage: this device only for now. The log document (ledger.js) is what will be synced;
+   Store.data is worked out from it and is what the screens read. Nothing else touches localStorage. ---- */
 const Store = {
-  KEY: 'chord-backing-progress-v1',
+  KEY: 'musichero-log-v2',
+  OLD_KEY: 'chord-backing-progress-v1',
   ok: true,
+  doc: null,
   data: null,
   load() {
-    let d = null;
-    try { const raw = localStorage.getItem(this.KEY); if (raw) d = JSON.parse(raw); } catch (e) { this.ok = false; }
-    this.data = d && d.v === 1 ? Object.assign(freshData(), d) : freshData();
+    let doc = null;
+    try {
+      const raw = localStorage.getItem(this.KEY);
+      if (raw) doc = cleanDoc(JSON.parse(raw));
+      else {
+        /* first start after the update: the old records become this device's base; the old copy stays as a backup */
+        const old = localStorage.getItem(this.OLD_KEY);
+        if (old) { const d = JSON.parse(old); if (d && d.v === 1) doc = docFromV1(d, Date.now()); }
+      }
+    } catch (e) { this.ok = false; }
+    this.doc = doc || freshDoc();
+    this.data = derive(this.doc);
+    if (doc && !localStorage.getItem(this.KEY)) this.save();
   },
   save() {
-    try { localStorage.setItem(this.KEY, JSON.stringify(this.data)); } catch (e) { this.ok = false; }
+    try { localStorage.setItem(this.KEY, JSON.stringify(this.doc)); } catch (e) { this.ok = false; }
   },
-  reset() { this.data = freshData(); this.save(); }
+  /* records one answer; returns the quests it completed */
+  answer(a) {
+    const k = today();
+    const day = this.data.days[k];
+    a.goal = day && day.goal ? day.goal : GOAL_Q;
+    const e = logAnswer(this.doc, k, a, Date.now());
+    const done = applyEvent(this.data, e);
+    this.save();
+    return done;
+  },
+  setPref(key, value) { setPref(this.doc, key, value, Date.now()); this.save(); },
+  /* 기록 초기화: settings stay */
+  reset() { resetDoc(this.doc, Date.now()); this.data = derive(this.doc); this.save(); },
+  /* takes in another copy of the records (from the server, later) */
+  merge(other) { this.doc = mergeDocs(this.doc, other); this.data = derive(this.doc); this.save(); }
 };
 Store.load();
-if (!Store.data.pref) Store.data.pref = { acc: 'flat' };
 ACCIDENTAL = Store.data.pref.acc === 'sharp' ? 'sharp' : 'flat';
 function today() { return dayKey(new Date()); }
 

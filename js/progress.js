@@ -1,8 +1,10 @@
 /* Progress rules: days, streaks, quests, reviews, XP and levels. Plain data in, plain data out.
    No DOM: also loaded by the unit tests in Node. */
 /* ---- progress: plain data in, plain data out, so the storage behind it can change later ---- */
-/* GOAL_PRACTICE: solo practice was removed; days that met the goal by 10 minutes of it still count */
-const GOAL_Q = 5, GOAL_PRACTICE = 600;
+/* Daily goal in questions. Each day keeps the goal it was played under (day.goal), so raising it never breaks
+   an existing streak; days from before goals were stored used 5.
+   GOAL_PRACTICE: solo practice was removed; days that met the goal by 10 minutes of it still count. */
+const GOAL_Q = 10, LEGACY_GOAL_Q = 5, GOAL_PRACTICE = 600;
 const XP_RIGHT = 10, XP_WRONG = 2;
 /* Each level needs 50 XP more than the one before: 100, 150, 200, ... */
 function levelInfo(xp) {
@@ -26,9 +28,10 @@ function keyToDate(k) { const p = k.split('-').map(Number); return new Date(p[0]
 function addDays(k, n) { const d = keyToDate(k); d.setDate(d.getDate() + n); return dayKey(d); }
 function weekStart(k) { const d = keyToDate(k); return addDays(k, -((d.getDay() + 6) % 7)); }
 function freshData() { return { v: 1, xp: 0, days: {}, review: [], prog: {}, quests: {}, weeks: {}, pref: { acc: 'flat' } }; }
-function getDay(data, k) { return data.days[k] || (data.days[k] = { q: 0, right: 0, practice: 0, best: 0, cur: 0 }); }
-function goalMet(day) { return !!day && (day.q >= GOAL_Q || (day.practice || 0) >= GOAL_PRACTICE); }
-function goalRatio(day) { return day ? Math.min(1, Math.max(day.q / GOAL_Q, (day.practice || 0) / GOAL_PRACTICE)) : 0; }
+function getDay(data, k, goal) { return data.days[k] || (data.days[k] = { q: 0, right: 0, practice: 0, best: 0, cur: 0, goal: goal || GOAL_Q }); }
+function goalOf(day) { return (day && day.goal) || LEGACY_GOAL_Q; }
+function goalMet(day) { return !!day && (day.q >= goalOf(day) || (day.practice || 0) >= GOAL_PRACTICE); }
+function goalRatio(day) { return day ? Math.min(1, Math.max(day.q / goalOf(day), (day.practice || 0) / GOAL_PRACTICE)) : 0; }
 /* consecutive days with the goal met; today counts once met, and an unmet today doesn't break yesterday's run */
 function streakCount(data, k) {
   let c = goalMet(data.days[k]) ? k : addDays(k, -1);
@@ -68,9 +71,10 @@ function settleQuests(data, k) {
   });
   return out;
 }
-/* a: { type: 'prog'|'key', id, mode, ok, review, xp } — xp is what a right answer earns (preset dependent) — a wrong answer comes back for review the next day */
+/* a: { type: 'prog'|'key'|'qual', id, mode, ok, review, xp, goal } — xp is what a right answer earns (preset dependent),
+   goal the daily goal in force when the day started. A wrong answer comes back for review the next day. */
 function recordAnswer(data, k, a) {
-  const d = getDay(data, k);
+  const d = getDay(data, k, a.goal);
   d.q++;
   if (a.ok) { d.right++; d.cur++; d.best = Math.max(d.best, d.cur); data.xp += a.xp || XP_RIGHT; }
   else { d.cur = 0; data.xp += XP_WRONG; }
@@ -87,7 +91,7 @@ function recordAnswer(data, k, a) {
 }
 function activityLevel(day) {
   if (!day) return 0;
-  const r = Math.max(day.q / GOAL_Q, (day.practice || 0) / GOAL_PRACTICE);
+  const r = Math.max(day.q / goalOf(day), (day.practice || 0) / GOAL_PRACTICE);
   return r <= 0 ? 0 : r < 0.5 ? 1 : r < 1 ? 2 : r < 2 ? 3 : 4;
 }
 function longestStreak(data) {
@@ -111,8 +115,8 @@ function reminderPlan(data, now, hour, minute, days) {
     const at = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i, hour, minute, 0, 0);
     if (i === 0 && (at <= now || goalMet(data.days[todayKey]))) continue;
     const body = i === 0 && streak > 0
-      ? streak + '일 연속 기록이 이어지도록 오늘 5문제만 풀어볼까요?'
-      : '오늘 목표: 5문제 풀기';
+      ? streak + '일 연속 기록이 이어지도록 오늘 ' + GOAL_Q + '문제만 풀어볼까요?'
+      : '오늘 목표: ' + GOAL_Q + '문제 풀기';
     out.push({ id: 100 + i, at: at, title: 'Music Hero', body: body });
   }
   return out;
@@ -133,7 +137,7 @@ function totals(data) {
 
 if (typeof module !== 'undefined') {
   module.exports = {
-    GOAL_Q, GOAL_PRACTICE, XP_RIGHT, XP_WRONG, dayKey, addDays, weekStart, freshData, goalMet, streakCount,
+    GOAL_Q, LEGACY_GOAL_Q, GOAL_PRACTICE, goalOf, goalRatio, XP_RIGHT, XP_WRONG, dayKey, addDays, weekStart, freshData, goalMet, streakCount,
     weekGoalDays, questList, settleQuests, recordAnswer, dueReviews, totals, levelInfo, titleFor,
     unlockedAt, activityLevel, longestStreak, reminderPlan
   };

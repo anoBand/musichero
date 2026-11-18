@@ -165,10 +165,9 @@ function answer(i) {
   /* written answers earn half as much again, rounded to 5 */
   const gain = q.free ? Math.round(baseGain * 1.5 / 5) * 5 : baseGain;
   const levelBefore = levelInfo(Store.data.xp).level;
-  const doneQuests = recordAnswer(Store.data, today(), {
+  const doneQuests = Store.answer({
     type: q.type, id: inReview && state.session.item ? state.session.item.id : q.itemId, mode: q.mode, ok: ok, review: inReview, xp: gain
   });
-  Store.save();
 
   const btns = $('#opts').children;
   let correctLetter = '';

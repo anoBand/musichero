@@ -498,8 +498,7 @@ function setLayer(key, on) {
 function setKit(id) {
   if (!KITS[id]) return;
   state.kit = id;
-  Store.data.pref.kit = id;
-  Store.save();
+  Store.setPref('kit', id);
   renderKit();
   if (playing && current && !current.preview) morph();
   else if (ctx) loadKit().catch(() => {});

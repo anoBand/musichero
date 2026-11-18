@@ -37,7 +37,8 @@ try {
   await page.waitForTimeout(300);
   check(await ev("document.querySelector('h1').textContent") === 'Music Hero', 'home renders');
   check(await ev("document.querySelectorAll('#home .mode').length") === 4, 'home lists the three quizzes and review');
-  await ev('Store.data.xp = 1000; Store.save()');
+  /* unlock 중수: extra XP goes in as a base so it survives reloads like real records */
+  await ev("Store.doc.bases.test = { at: Date.now(), data: { xp: 1000 } }; Store.data.xp += 1000; Store.save()");
 
   // progression quiz, multiple choice
   await page.click('#m-prog');
@@ -139,6 +140,23 @@ try {
   await page.reload();
   await page.waitForTimeout(300);
   check(await ev("document.documentElement.dataset.theme === 'dark' && Store.data.days[today()].q >= 3"), 'theme and progress survive a reload');
+  check(await ev("Store.data.xp >= 1000 && Store.doc.events.length === Store.data.days[today()].q"), 'answers are kept as log events');
+
+  // records saved by an earlier version move into the log on first start
+  const old = await ctx.newPage();
+  old.on('pageerror', (e) => errors.push(String(e)));
+  await old.goto(URL_);
+  await old.evaluate(() => {
+    localStorage.clear();
+    const y = addDays(today(), -1);
+    const days = {};
+    days[y] = { q: 5, right: 4, practice: 0, best: 3, cur: 1 };
+    localStorage.setItem('chord-backing-progress-v1', JSON.stringify({ v: 1, xp: 320, days: days, review: [], prog: {}, quests: {}, weeks: {}, pref: { acc: 'sharp', kit: 'guitar' } }));
+  });
+  await old.reload();
+  await old.waitForTimeout(300);
+  check(await old.evaluate("Store.data.xp === 320 && document.querySelector('#streak-n').textContent === '1' && ACCIDENTAL === 'sharp' && state.kit === 'guitar'"), 'old records, streak and settings carry over');
+  check(await old.evaluate("document.querySelector('#goal-detail').textContent === '문제 0/10' && !!localStorage.getItem('musichero-log-v2')"), 'new daily goal is 10 and the log is saved');
 } catch (e) {
   failed++;
   console.log('FAIL ' + e.message);

@@ -14,12 +14,12 @@ function fmtDuration(sec) {
 function renderHome() {
   const data = Store.data;
   const k = today();
-  const day = data.days[k] || { q: 0, right: 0, practice: 0 };
+  const day = data.days[k] || { q: 0, right: 0, practice: 0, goal: GOAL_Q };
   const met = goalMet(day);
   $('#streak-n').textContent = String(streakCount(data, k));
-  $('#goal-title').textContent = met ? '오늘 목표를 달성했어요' : '오늘 목표: 5문제 풀기';
+  $('#goal-title').textContent = met ? '오늘 목표를 달성했어요' : '오늘 목표: ' + goalOf(day) + '문제 풀기';
   $('#goal-bar').style.width = Math.round(goalRatio(day) * 100) + '%';
-  $('#goal-detail').textContent = '문제 ' + Math.min(day.q, GOAL_Q) + '/' + GOAL_Q;
+  $('#goal-detail').textContent = '문제 ' + Math.min(day.q, goalOf(day)) + '/' + goalOf(day);
   const li = levelInfo(data.xp);
   $('#level-n').textContent = '레벨 ' + li.level + ' · ' + titleFor(li.level);
   $('#level-bar').style.width = Math.round(li.into / li.need * 100) + '%';

@@ -38,8 +38,7 @@ async function setReminder(on) {
       on = false;
     }
   }
-  Store.data.pref.remind = Object.assign(reminderPref(), { on: on });
-  Store.save();
+  Store.setPref('remind', Object.assign(reminderPref(), { on: on }));
   renderReminder();
   refreshReminders();
 }
@@ -62,8 +61,7 @@ if (Native.on) {
   $('#remind-time').addEventListener('change', (e) => {
     const t = /^(\d{2}):(\d{2})$/.exec(e.target.value);
     if (!t) return;
-    Store.data.pref.remind = Object.assign(reminderPref(), { h: Number(t[1]), m: Number(t[2]) });
-    Store.save();
+    Store.setPref('remind', Object.assign(reminderPref(), { h: Number(t[1]), m: Number(t[2]) }));
     refreshReminders();
   });
   const App = Native.plugin('App');

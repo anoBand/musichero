@@ -15,16 +15,20 @@ test('dates', () => {
 test('goal and streak', () => {
   const D = P.freshData();
   const t = '2026-11-10';
-  for (let i = 0; i < 4; i++) P.recordAnswer(D, t, { type: 'prog', id: 'axis', mode: 'major', ok: true });
+  for (let i = 0; i < P.GOAL_Q - 1; i++) P.recordAnswer(D, t, { type: 'prog', id: 'axis', mode: 'major', ok: true });
   assert.equal(P.goalMet(D.days[t]), false);
   assert.equal(P.streakCount(D, t), 0);
   P.recordAnswer(D, t, { type: 'prog', id: 'royal', mode: 'major', ok: false });
+  assert.equal(P.GOAL_Q, 10);
   assert.equal(P.goalMet(D.days[t]), true);
   assert.equal(P.streakCount(D, t), 1);
   assert.equal(P.streakCount(D, '2026-11-11'), 1, 'an unmet today keeps yesterday');
   assert.equal(P.streakCount(D, '2026-11-12'), 0, 'a missed day breaks it');
   D.days['2026-11-11'] = { q: 0, right: 0, practice: 600, best: 0, cur: 0 };
   assert.equal(P.streakCount(D, '2026-11-11'), 2, 'days met by solo practice before it was removed still count');
+  D.days['2026-11-09'] = { q: 5, right: 5, practice: 0, best: 5, cur: 5 };
+  assert.equal(P.streakCount(D, '2026-11-11'), 3, 'a 5-question day from before the goal was raised still counts');
+  assert.equal(P.goalMet({ q: 5, right: 5, practice: 0, best: 0, cur: 0, goal: 10 }), false);
 });
 
 test('quests pay once', () => {

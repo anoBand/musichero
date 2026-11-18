@@ -18,8 +18,7 @@ $('#levels').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-v]');
   if (!b) return;
   state.level = b.dataset.v;
-  Store.data.pref.level = state.level;
-  Store.save();
+  Store.setPref('level', state.level);
   clearTimeout(beatTimer);
   if (playing) stop(null, true);
   renderLevel();
@@ -39,8 +38,7 @@ function applyTheme(t) {
 }
 $('#theme').addEventListener('click', () => {
   const next = currentTheme() === 'dark' ? 'light' : 'dark';
-  Store.data.pref.theme = next;
-  Store.save();
+  Store.setPref('theme', next);
   applyTheme(next);
 });
 applyTheme(Store.data.pref.theme || null);
@@ -65,8 +63,7 @@ $('#amode').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-a]');
   if (!b) return;
   state.amode = b.dataset.a;
-  Store.data.pref.amode = state.amode;
-  Store.save();
+  Store.setPref('amode', state.amode);
   renderAmode();
 });
 if (Store.data.pref.amode === 'free') state.amode = 'free';
@@ -165,8 +162,7 @@ $('#acc').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-a]');
   if (!b) return;
   ACCIDENTAL = b.dataset.a;
-  Store.data.pref.acc = ACCIDENTAL;
-  Store.save();
+  Store.setPref('acc', ACCIDENTAL);
   markAcc();
   relabelKeyGrids();
   renderLevel();
@@ -188,8 +184,7 @@ $('#styles').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-s]');
   if (!b) return;
   state.style = b.dataset.s;
-  Store.data.pref.style = state.style;
-  Store.save();
+  Store.setPref('style', state.style);
   renderStyles();
   if (state.bpmMode === 'fixed' && !LEVELS[state.level]) previewBeat();
 });
@@ -207,10 +202,7 @@ $('#reset').addEventListener('click', () => {
   const b = $('#reset');
   if (resetArmed) {
     clearTimeout(resetArmed); resetArmed = null;
-    const keep = Store.data.pref;
     Store.reset();
-    Store.data.pref = keep;
-    Store.save();
     b.textContent = '기록 초기화';
     renderHome();
     return;
